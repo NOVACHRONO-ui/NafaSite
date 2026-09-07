@@ -441,6 +441,11 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
     </div>
 
     <div class="nav-group">
+      <div class="nav-label">Finances</div>
+      <button class="nav-btn" data-target="tresorerie" data-roles="admin,cashier"><span class="ic">🏦</span><span class="lbl">Trésorerie</span></button>
+    </div>
+
+    <div class="nav-group">
       <div class="nav-label">Clients</div>
       <button class="nav-btn" data-target="abonnements" data-roles="admin,cashier"><span class="ic">🪪</span><span class="lbl">Abonnements</span></button>
     </div>
@@ -724,6 +729,46 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         <div class="panel" style="margin-top:16px;">
           <div class="panel-head"><h3>Évolution des recrutements</h3></div>
           <div class="panel-body"><div class="chart-wrap"><canvas id="chartRecrutMini"></canvas></div></div>
+        </div>
+      </section>
+
+      <!-- ================= TRÉSORERIE ================= -->
+      <section class="page" id="page-tresorerie">
+        <div class="section-head">
+          <div><div class="eyebrow">Finances</div><h2>Trésorerie</h2></div>
+          <div class="section-actions">
+            <button class="btn btn-primary" id="btnAddMovement">➕ Nouveau mouvement</button>
+          </div>
+        </div>
+        <div class="kpi-grid" id="tresoKpis" style="grid-template-columns:repeat(5,1fr);"></div>
+        <div class="charts-grid">
+          <div class="panel full">
+            <div class="panel-head">
+              <div><h3>Entrées vs Sorties</h3><div class="desc">30 derniers jours, tous modes confondus</div></div>
+            </div>
+            <div class="panel-body"><div class="chart-wrap"><canvas id="chartTresorerie"></canvas></div></div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="search-box"><span class="ic">🔎</span><input id="tresoSearch" placeholder="Rechercher un mouvement…"></div>
+          <select class="select-filter" id="tresoTypeFilter">
+            <option value="">Tous types</option>
+            <option value="entree">⬆️ Entrées</option>
+            <option value="sortie">⬇️ Sorties</option>
+          </select>
+          <select class="select-filter" id="tresoModeFilter">
+            <option value="">Tous modes</option>
+            <option>Espèces</option><option>Mobile Money</option><option>Carte</option><option>Banque</option>
+          </select>
+          <span class="pill pill-neutral" id="tresoTotalTag"></span>
+          <div class="spacer"></div>
+          <button class="btn btn-danger btn-sm" id="btnWipeTreso" data-roles="admin">🗑️ Tout supprimer</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Date</th><th>Type</th><th>Catégorie</th><th>Description</th><th>Mode</th><th>Montant</th><th>Auteur</th><th></th></tr></thead>
+            <tbody id="tresoTbody"></tbody>
+          </table>
         </div>
       </section>
 
@@ -1090,6 +1135,9 @@ function seedState(){
     ],
     evaluations: [],
     salaryPayments: [],
+    treasuryMovements: [
+      {id:uid('TR'), date:'2026-08-01', type:'entree', mode:'Espèces', categorie:'Apport', description:'Fonds de caisse initial', montant:150000, auteur:'Administrateur Principal'},
+    ],
   };
 }
 
@@ -1125,6 +1173,9 @@ function ensureDataIntegrity(){
     if(e.competences === undefined){ e.competences = 3; changed = true; }
     if(e.experienceAnnees === undefined){ e.experienceAnnees = 0; changed = true; }
   });
+  // Anciens achats/dépenses enregistrés avant l'ajout du mode de paiement (nécessaire pour la trésorerie)
+  (state.purchases||[]).forEach(p=>{ if(!p.mode){ p.mode = 'Espèces'; changed = true; } });
+  (state.expenses||[]).forEach(e=>{ if(!e.mode){ e.mode = 'Espèces'; changed = true; } });
   if(state.settings && !state.settings.congeCycleStart){ state.settings.congeCycleStart = '2026-08-01'; changed = true; }
   if(changed) persist(true);
 }
@@ -1290,11 +1341,12 @@ const PAGE_TITLES = {
   rapports: ['Rapports et statistiques', "Analyses détaillées de la performance"],
   parametres: ['Paramètres', "Configuration générale de l'application"],
   abonnements: ['Abonnements', "Clients particuliers et entreprises abonnés au restaurant"],
+  tresorerie: ['Trésorerie', "Suivi des entrées et sorties de caisse par mode de paiement"],
 };
 
 const ROLE_PAGES = {
-  admin: ['dashboard','menu','achats','ventes','stock','employes','recrutement','categories','rapports','parametres','abonnements'],
-  cashier: ['dashboard','achats','ventes','stock','employes','recrutement','categories','abonnements'],
+  admin: ['dashboard','menu','achats','ventes','stock','employes','recrutement','categories','rapports','parametres','abonnements','tresorerie'],
+  cashier: ['dashboard','achats','ventes','stock','employes','recrutement','categories','abonnements','tresorerie'],
 };
 function goTo(page){
   if(currentUser && !ROLE_PAGES[currentUser.role].includes(page)) page = 'dashboard';
@@ -1320,6 +1372,7 @@ function renderPage(page){
   else if(page==='rapports') renderRapports();
   else if(page==='parametres') renderParametres();
   else if(page==='abonnements') renderAbonnements();
+  else if(page==='tresorerie') renderTresorerie();
 }
 
 /* ---------------- gestion générique des graphiques ---------------- */
@@ -1654,6 +1707,9 @@ function openPurchaseForm(id){
           <div class="field"><label>Unité</label><input required name="unite" value="${item?escapeHtml(item.unite):'kg'}" placeholder="kg, L, unité…"></div>
           <div class="field"><label>Prix d'achat unitaire (FCFA)</label><input required type="number" min="0" name="prixUnitaire" value="${item?item.prixUnitaire:''}"></div>
           <div class="field"><label>Date d'achat</label><input required type="date" name="date" value="${item?item.date:todayISO()}"></div>
+          <div class="field full"><label>Mode de paiement</label>
+            <select name="mode">${['Espèces','Mobile Money','Carte','Banque'].map(m=>`<option ${item&&item.mode===m?'selected':''}>${m}</option>`).join('')}</select>
+          </div>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
@@ -1668,7 +1724,7 @@ function openPurchaseForm(id){
         const quantite = Number(f.get('quantite')); const prixUnitaire = Number(f.get('prixUnitaire'));
         const payload = {
           nom:f.get('nom').trim(), categorie:f.get('categorie'), fournisseur:f.get('fournisseur').trim(),
-          quantite, unite:f.get('unite').trim(), prixUnitaire, date:f.get('date'), total: Math.round(quantite*prixUnitaire*100)/100
+          quantite, unite:f.get('unite').trim(), prixUnitaire, date:f.get('date'), mode:f.get('mode'), total: Math.round(quantite*prixUnitaire*100)/100
         };
         if(item){ Object.assign(item, payload); toast('Achat modifié'); }
         else { state.purchases.push({id:uid('ACH'), ...payload}); toast('Achat ajouté'); }
@@ -1708,6 +1764,9 @@ function openExpenseForm(id){
           <div class="field"><label>Montant (FCFA)</label><input required type="number" min="0" name="montant" value="${item?item.montant:''}"></div>
           <div class="field full"><label>Description</label><input required name="description" value="${item?escapeHtml(item.description):''}"></div>
           <div class="field"><label>Date</label><input required type="date" name="date" value="${item?item.date:todayISO()}"></div>
+          <div class="field full"><label>Mode de paiement</label>
+            <select name="mode">${['Espèces','Mobile Money','Carte','Banque'].map(m=>`<option ${item&&item.mode===m?'selected':''}>${m}</option>`).join('')}</select>
+          </div>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
@@ -1719,7 +1778,7 @@ function openExpenseForm(id){
       overlay.querySelector('#expenseForm').addEventListener('submit',(e)=>{
         e.preventDefault();
         const f = new FormData(e.target);
-        const payload = { categorie:f.get('categorie').trim(), description:f.get('description').trim(), montant:Number(f.get('montant')), date:f.get('date') };
+        const payload = { categorie:f.get('categorie').trim(), description:f.get('description').trim(), montant:Number(f.get('montant')), date:f.get('date'), mode:f.get('mode') };
         if(item){ Object.assign(item, payload); toast('Dépense modifiée'); }
         else { state.expenses.push({id:uid('DEP'), ...payload}); toast('Dépense ajoutée'); }
         persist(); closeModal(); renderDepensesTable(); if(document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
@@ -2167,16 +2226,18 @@ function employeePerformance(employeeId){
 function openEvaluationForm(employeeId){
   const emp = state.employees.find(e=>e.id===employeeId);
   if(!emp) return;
+  const derniere = employeeEvaluations(employeeId)[0]; // évaluation la plus récente, s'il y en a une
   openModal({
     title: 'Évaluer — ' + emp.nom,
     bodyHtml:`
       <form id="evalForm">
-        ${EVAL_CRITERES.map(c=>`
+        ${derniere ? `<p style="font-size:11.5px;color:var(--ink-soft);margin-bottom:10px;">Curseurs pré-remplis avec la dernière évaluation du ${fmtDate(derniere.date)} (note globale ${derniere.scoreGlobal}/100). Ajustez si besoin.</p>` : ''}
+        ${EVAL_CRITERES.map(c=>{ const val = derniere ? derniere.criteres[c.key] : 70; return `
           <div class="field" style="margin-bottom:12px;">
             <label>${c.icon} ${c.label} <span class="hint">(pondération ${Math.round(c.poids*100)}%)</span></label>
-            <input type="range" min="0" max="100" step="5" value="70" name="${c.key}" oninput="this.nextElementSibling.textContent=this.value+' / 100'">
-            <div class="mono" style="text-align:right;font-size:12px;color:var(--ink-soft);">70 / 100</div>
-          </div>`).join('')}
+            <input type="range" min="0" max="100" step="5" value="${val}" name="${c.key}" oninput="this.nextElementSibling.textContent=this.value+' / 100'">
+            <div class="mono" style="text-align:right;font-size:12px;color:var(--ink-soft);">${val} / 100</div>
+          </div>`;}).join('')}
         <div class="field full"><label>Commentaire <span class="hint">(optionnel)</span></label><textarea name="commentaire" placeholder="Observations…"></textarea></div>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
@@ -2287,6 +2348,138 @@ function renderRecrutement(){
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
       scales:{ y:{beginAtZero:true, ticks:{stepSize:1}, grid:{color:'#EEF2EE'}}, x:{grid:{display:false}} } }
   });
+}
+
+/* ========================================================
+   PAGE : TRÉSORERIE — soldes par mode de paiement (Espèces, Mobile Money, Carte, Banque)
+   ======================================================== */
+const TRESO_MODES = ['Espèces','Mobile Money','Carte','Banque'];
+function normalizeTresoMode(mode){
+  if(mode==='Virement bancaire' || mode==='Chèque') return 'Banque';
+  return TRESO_MODES.includes(mode) ? mode : 'Espèces';
+}
+function computeTreasury(){
+  const balance = {}; TRESO_MODES.forEach(m=>balance[m]=0);
+  state.sales.forEach(s=>{ const m=normalizeTresoMode(s.paiement); balance[m]+=s.total; });
+  state.purchases.forEach(p=>{ const m=normalizeTresoMode(p.mode); balance[m]-=p.total; });
+  state.expenses.forEach(e=>{ const m=normalizeTresoMode(e.mode); balance[m]-=e.montant; });
+  state.salaryPayments.forEach(p=>{ const m=normalizeTresoMode(p.mode); balance[m]-=p.montant; });
+  state.treasuryMovements.forEach(m=>{ const mode=normalizeTresoMode(m.mode); balance[mode] += (m.type==='entree'? m.montant : -m.montant); });
+  const total = TRESO_MODES.reduce((s,m)=>s+balance[m],0);
+  return { balance, total };
+}
+function treasuryFlowLast30Days(){
+  const days = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  for(let i=29;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  const entrees = {}, sorties = {};
+  days.forEach(d=>{ entrees[d]=0; sorties[d]=0; });
+  state.sales.forEach(s=>{ if(entrees[s.date]!==undefined) entrees[s.date]+=s.total; });
+  state.purchases.forEach(p=>{ if(sorties[p.date]!==undefined) sorties[p.date]+=p.total; });
+  state.expenses.forEach(e=>{ if(sorties[e.date]!==undefined) sorties[e.date]+=e.montant; });
+  state.salaryPayments.forEach(p=>{ if(sorties[p.date]!==undefined) sorties[p.date]+=p.montant; });
+  state.treasuryMovements.forEach(m=>{
+    if(m.type==='entree'){ if(entrees[m.date]!==undefined) entrees[m.date]+=m.montant; }
+    else { if(sorties[m.date]!==undefined) sorties[m.date]+=m.montant; }
+  });
+  return { days, entrees: days.map(d=>entrees[d]), sorties: days.map(d=>sorties[d]) };
+}
+
+function renderTresorerie(){
+  const { balance, total } = computeTreasury();
+  const icons = {'Espèces':'💵','Mobile Money':'📱','Carte':'💳','Banque':'🏦'};
+  const accents = {'Espèces':'--leaf','Mobile Money':'--sky','Carte':'--millet','Banque':'--teal-800'};
+  const tints = {'Espèces':'--leaf-tint','Mobile Money':'--sky-tint','Carte':'--millet-tint','Banque':'--line-soft'};
+  const cards = TRESO_MODES.map(m=>({ label:m, value:fcfa(balance[m]), neg:balance[m]<0, icon:icons[m], accent:accents[m], tint:tints[m] }));
+  cards.push({ label:'Solde total', value:fcfa(total), neg:total<0, icon:'🧮', accent:'--bissap', tint:'--bissap-tint' });
+  $('#tresoKpis').innerHTML = cards.map(k=>`
+    <div class="kpi-card" style="--accent:var(${k.accent});--accent-tint:var(${k.tint})">
+      <div class="kpi-top"><span class="kpi-label">${k.label}</span><span class="kpi-badge">${k.icon}</span></div>
+      <div class="kpi-value ${k.neg?'neg':''}">${k.value}</div>
+    </div>`).join('');
+
+  const { days, entrees, sorties } = treasuryFlowLast30Days();
+  drawChart('chartTresorerie', {
+    type:'line',
+    data:{ labels: days.map(d=>d.slice(5).split('-').reverse().join('/')),
+      datasets:[
+        { label:'Entrées', data:entrees, borderColor:'#2F8F63', backgroundColor:'rgba(47,143,99,.08)', fill:true, tension:.3, pointRadius:2 },
+        { label:'Sorties', data:sorties, borderColor:'#C0273A', backgroundColor:'rgba(192,39,58,.08)', fill:true, tension:.3, pointRadius:2 },
+      ]},
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{beginAtZero:true, grid:{color:'#EEF2EE'}}, x:{grid:{display:false}} } }
+  });
+
+  renderTresoTable();
+}
+
+let tresoFilter = { q:'', type:'', mode:'' };
+function renderTresoTable(){
+  const q = tresoFilter.q.toLowerCase();
+  let rows = state.treasuryMovements.filter(m=>{
+    if(q && !((m.categorie+' '+m.description).toLowerCase().includes(q))) return false;
+    if(tresoFilter.type && m.type!==tresoFilter.type) return false;
+    if(tresoFilter.mode && m.mode!==tresoFilter.mode) return false;
+    return true;
+  }).sort((a,b)=> b.date.localeCompare(a.date));
+  $('#tresoTotalTag').textContent = rows.length + ' mouvement(s) manuel(s)';
+  $('#tresoTbody').innerHTML = rows.length ? rows.map(m=>`
+    <tr>
+      <td>${fmtDate(m.date)}</td>
+      <td>${m.type==='entree'?'<span class="pill pill-ok">⬆️ Entrée</span>':'<span class="pill pill-warn">⬇️ Sortie</span>'}</td>
+      <td><span class="pill pill-neutral">${escapeHtml(m.categorie)}</span></td>
+      <td>${escapeHtml(m.description)}</td>
+      <td>${escapeHtml(m.mode)}</td>
+      <td class="num"><b>${fmt(m.montant)}</b></td>
+      <td>${escapeHtml(m.auteur)}</td>
+      <td class="actions"><div class="row-actions">
+        <button class="icon-btn danger" title="Supprimer" onclick="deleteMovement('${m.id}')">🗑️</button>
+      </div></td>
+    </tr>`).join('') : `<tr class="empty-row"><td colspan="8">Aucun mouvement manuel enregistré. Les ventes, achats, dépenses et salaires alimentent déjà la trésorerie automatiquement.</td></tr>`;
+}
+
+function openMovementForm(){
+  openModal({
+    title: 'Nouveau mouvement de caisse',
+    bodyHtml:`
+      <form id="movementForm">
+        <div class="form-grid">
+          <div class="field full">
+            <label>Type de mouvement</label>
+            <select name="type">
+              <option value="entree">⬆️ Entrée (apport, remboursement…)</option>
+              <option value="sortie">⬇️ Sortie (retrait, achat urgent…)</option>
+            </select>
+          </div>
+          <div class="field"><label>Catégorie</label><input required list="tresoCatList" name="categorie" placeholder="Ex : Apport, Retrait, Avance…">
+            <datalist id="tresoCatList"><option>Apport</option><option>Retrait</option><option>Avance sur salaire</option><option>Correction de caisse</option><option>Achat urgent</option><option>Autre</option></datalist>
+          </div>
+          <div class="field"><label>Montant (FCFA)</label><input required type="number" min="0" name="montant"></div>
+          <div class="field full"><label>Description</label><input required name="description" placeholder="Ex : Dépôt du propriétaire"></div>
+          <div class="field"><label>Mode</label><select name="mode">${TRESO_MODES.map(m=>`<option>${m}</option>`).join('')}</select></div>
+          <div class="field"><label>Date</label><input required type="date" name="date" value="${todayISO()}"></div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#movementForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const f = new FormData(e.target);
+        state.treasuryMovements.push({
+          id: uid('TR'), type: f.get('type'), categorie: f.get('categorie').trim(), description: f.get('description').trim(),
+          montant: Number(f.get('montant')), mode: f.get('mode'), date: f.get('date'), auteur: currentUser.nom,
+        });
+        persist(); closeModal(); renderTresorerie(); toast('Mouvement enregistré');
+      });
+    }
+  });
+}
+function deleteMovement(id){
+  confirmModal({ message:"Supprimer ce mouvement de caisse ? Cette action est irréversible.",
+    onConfirm(){ state.treasuryMovements = state.treasuryMovements.filter(x=>x.id!==id); persist(); renderTresorerie(); toast('Mouvement supprimé'); } });
 }
 
 /* ========================================================
@@ -2991,6 +3184,13 @@ async function init(){
     toast(payload.nom + ' a été recruté(e) 🎉'); renderRecrutement();
   });
 
+  // Trésorerie
+  $('#btnAddMovement').addEventListener('click', ()=>openMovementForm());
+  $('#tresoSearch').addEventListener('input', (e)=>{ tresoFilter.q=e.target.value; renderTresoTable(); });
+  $('#tresoTypeFilter').addEventListener('change', (e)=>{ tresoFilter.type=e.target.value; renderTresoTable(); });
+  $('#tresoModeFilter').addEventListener('change', (e)=>{ tresoFilter.mode=e.target.value; renderTresoTable(); });
+  $('#btnWipeTreso').addEventListener('click', ()=>wipeModule('treasuryMovements','Mouvements de trésorerie'));
+
   // Abonnements
   $('#btnAddSubscription').addEventListener('click', ()=>openSubscriptionForm());
   $('#subsSearch').addEventListener('input', (e)=>{ subsFilter.q=e.target.value; renderAbonnements(); });
@@ -3016,7 +3216,7 @@ async function init(){
   $('#btnWipeAll').addEventListener('click', ()=>{
     passwordConfirmModal({ title:'Réinitialisation totale', confirmLabel:'Tout effacer',
       message:'Supprimer toutes les données de tous les modules (achats, ventes, stock, employés, catégories) ? Cette action est irréversible.',
-      onConfirm(){ ['products','purchases','expenses','sales','stock','employees','categories','subscriptions'].forEach(k=>state[k]=[]); persist(); goTo(currentPage()); toast('Toutes les données ont été effacées'); } });
+      onConfirm(){ ['products','purchases','expenses','sales','stock','employees','categories','subscriptions','treasuryMovements'].forEach(k=>state[k]=[]); persist(); goTo(currentPage()); toast('Toutes les données ont été effacées'); } });
   });
 
   tickClock(); setInterval(tickClock, 30000);
