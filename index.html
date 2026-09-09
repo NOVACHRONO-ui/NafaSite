@@ -442,7 +442,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
 
     <div class="nav-group">
       <div class="nav-label">Finances</div>
-      <button class="nav-btn" data-target="tresorerie" data-roles="admin,cashier"><span class="ic">🏦</span><span class="lbl">Trésorerie</span></button>
+      <button class="nav-btn" data-target="tresorerie" data-roles="admin"><span class="ic">🏦</span><span class="lbl">Trésorerie</span></button>
     </div>
 
     <div class="nav-group">
@@ -1350,7 +1350,7 @@ const PAGE_TITLES = {
 
 const ROLE_PAGES = {
   admin: ['dashboard','menu','achats','ventes','stock','employes','recrutement','categories','rapports','parametres','abonnements','tresorerie'],
-  cashier: ['dashboard','achats','ventes','stock','employes','recrutement','categories','abonnements','tresorerie'],
+  cashier: ['dashboard','achats','ventes','stock','employes','recrutement','categories','abonnements'],
 };
 function goTo(page){
   if(currentUser && !ROLE_PAGES[currentUser.role].includes(page)) page = 'dashboard';
@@ -2805,10 +2805,59 @@ function renderCategories(){
       <div class="cat-dot" style="background:${c.couleur}"></div>
       <div class="meta"><b>${escapeHtml(c.nom)}</b><span>${usageCount(c.nom)} élément(s) associé(s)</span></div>
       <div class="cc-actions">
+        <button class="icon-btn" title="Imprimer la fiche" onclick="printCategoryReport('${escapeHtml(c.nom)}')">🖨️</button>
         <button class="icon-btn" title="Modifier" onclick="openCategoryForm('${c.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteCategory('${c.id}')">🗑️</button>
       </div>
     </div>`).join('') : `<div class="empty-state"><div class="em">📋</div><h4>Aucune catégorie</h4></div>`;
+}
+
+/* Fiche imprimable d'une catégorie : plats au menu, stock associé, et historique des achats (prix, fournisseur, quantités) */
+function printCategoryReport(catName){
+  const color = catColor(catName);
+  const produits = state.products.filter(p=>p.categorie===catName);
+  const stockItems = state.stock.filter(s=>s.categorie===catName);
+  const achats = state.purchases.filter(p=>p.categorie===catName).sort((a,b)=> b.date.localeCompare(a.date));
+  const totalAchats = achats.reduce((s,a)=>s+a.total,0);
+
+  const th = (label, right) => `<th style="padding:6px 5px;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:#5C6E67;${right?'text-align:right;':''}">${label}</th>`;
+  const td = (val, right, bold) => `<td style="padding:6px 5px;font-size:12px;${right?'text-align:right;':''}">${bold?'<b>':''}${val}${bold?'</b>':''}</td>`;
+
+  const sectionProduits = produits.length ? `
+    <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+      <thead><tr style="border-bottom:2px solid ${color};">${th('Plat')}${th('Période')}${th('Prix de vente', true)}${th('Coût matière', true)}</tr></thead>
+      <tbody>${produits.map(p=>`<tr style="border-bottom:1px solid #EEF2EE;">${td(escapeHtml(p.nom))}${td(escapeHtml(p.periode||'—'))}${td(fmt(p.prixVente)+' FCFA', true)}${td(fmt(p.coutMatiere)+' FCFA', true)}</tr>`).join('')}</tbody>
+    </table>` : `<p style="font-size:12px;color:#93A29B;">Aucun plat dans cette catégorie.</p>`;
+
+  const sectionStock = stockItems.length ? `
+    <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
+      <thead><tr style="border-bottom:2px solid ${color};">${th('Article')}${th('Stock actuel', true)}${th('Seuil min', true)}${th('Statut')}</tr></thead>
+      <tbody>${stockItems.map(s=>{ const alert = Number(s.actuel) < Number(s.min);
+        return `<tr style="border-bottom:1px solid #EEF2EE;">${td(escapeHtml(s.nom))}${td(fmt(s.actuel)+' '+escapeHtml(s.unite), true)}${td(fmt(s.min)+' '+escapeHtml(s.unite), true)}${td(alert?'⚠️ À commander':'✅ OK')}</tr>`; }).join('')}</tbody>
+    </table>` : `<p style="font-size:12px;color:#93A29B;">Aucun article de stock dans cette catégorie.</p>`;
+
+  const sectionAchats = achats.length ? `
+    <table style="width:100%;border-collapse:collapse;margin-bottom:4px;">
+      <thead><tr style="border-bottom:2px solid ${color};">${th('Date')}${th('Produit')}${th('Fournisseur')}${th('Quantité', true)}${th("Prix d'achat unit.", true)}${th('Total', true)}</tr></thead>
+      <tbody>${achats.map(a=>`<tr style="border-bottom:1px solid #EEF2EE;">${td(fmtDate(a.date))}${td(escapeHtml(a.nom))}${td(escapeHtml(a.fournisseur))}${td(fmt(a.quantite)+' '+escapeHtml(a.unite), true)}${td(fmt(a.prixUnitaire)+' FCFA', true)}${td(fmt(a.total)+' FCFA', true, true)}</tr>`).join('')}</tbody>
+    </table>
+    <div style="text-align:right;font-size:12.5px;margin-top:4px;">Total achats de la catégorie : <b>${fmt(totalAchats)} FCFA</b></div>` : `<p style="font-size:12px;color:#93A29B;">Aucun achat enregistré pour cette catégorie.</p>`;
+
+  const body = `
+  <div style="width:620px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
+    ${printBrandHeader('Fiche Catégorie — ' + catName, 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
+    <div style="padding:22px 24px;background:#fff;">
+      <div style="font-size:11px;color:#93A29B;margin-bottom:16px;">Générée le ${fmtDate(todayISO())}</div>
+      <h3 style="font-family:'Fraunces',serif;font-size:14px;color:#8E1C2B;border-bottom:2px solid #DD9A2B;padding-bottom:4px;margin-bottom:10px;">🍽️ Plats au menu</h3>
+      ${sectionProduits}
+      <h3 style="font-family:'Fraunces',serif;font-size:14px;color:#8E1C2B;border-bottom:2px solid #DD9A2B;padding-bottom:4px;margin:20px 0 10px;">📦 Stock associé</h3>
+      ${sectionStock}
+      <h3 style="font-family:'Fraunces',serif;font-size:14px;color:#8E1C2B;border-bottom:2px solid #DD9A2B;padding-bottom:4px;margin:20px 0 10px;">🛒 Historique des achats</h3>
+      ${sectionAchats}
+    </div>
+    ${printBrandFooter()}
+  </div>`;
+  openPrintWindow('Fiche catégorie — ' + catName, body);
 }
 
 function openCategoryForm(id){
