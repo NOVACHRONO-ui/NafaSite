@@ -430,6 +430,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
       <div class="nav-label">Activité</div>
       <button class="nav-btn" data-target="menu" data-roles="admin"><span class="ic">🍲</span><span class="lbl">Gestion du menu</span></button>
       <button class="nav-btn" data-target="achats" data-roles="admin,cashier"><span class="ic">🛒</span><span class="lbl">Produits achetés</span></button>
+      <button class="nav-btn" data-target="fournisseurs" data-roles="admin,cashier"><span class="ic">🏪</span><span class="lbl">Fournisseurs</span></button>
       <button class="nav-btn" data-target="ventes" data-roles="admin,cashier"><span class="ic">💰</span><span class="lbl">Produits vendus</span></button>
       <button class="nav-btn" data-target="stock" data-roles="admin,cashier"><span class="ic">📦</span><span class="lbl">Gestion du stock</span></button>
     </div>
@@ -601,6 +602,21 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
             </table>
           </div>
         </div>
+      </section>
+
+      <!-- ================= FOURNISSEURS ================= -->
+      <section class="page" id="page-fournisseurs">
+        <div class="section-head">
+          <div><div class="eyebrow">Approvisionnement</div><h2>Fournisseurs &amp; boutiques partenaires</h2></div>
+          <div class="section-actions"><button class="btn btn-primary" id="btnAddSupplier">➕ Nouveau fournisseur</button></div>
+        </div>
+        <div class="toolbar">
+          <div class="search-box"><span class="ic">🔎</span><input id="supplierSearch" placeholder="Rechercher un fournisseur…"></div>
+          <span class="pill pill-neutral" id="supplierTotalTag"></span>
+          <div class="spacer"></div>
+          <span class="pill pill-warn" id="supplierDetteTag"></span>
+        </div>
+        <div class="cat-grid" id="supplierGrid"></div>
       </section>
 
       <!-- ================= VENTES ================= -->
@@ -1039,6 +1055,7 @@ function monthKey(dateStr){ return dateStr.slice(0,7); }
 
 /* ---------------- données de démonstration (issues du classeur importé) ---------------- */
 function seedState(){
+  const demoSupplierId = uid('SUP');
   return {
     settings: { nom: "Chez Awa — Restaurant Sénégalais", ville: "Touba, Sénégal", devise: "FCFA", congeCycleStart: '2026-08-01' },
     users: [
@@ -1141,6 +1158,13 @@ function seedState(){
     salaryPayments: [],
     treasuryMovements: [
       {id:uid('TR'), date:'2026-08-01', type:'entree', mode:'Espèces', categorie:'Apport', description:'Fonds de caisse initial', montant:150000, auteur:'Administrateur Principal'},
+    ],
+    suppliers: [
+      {id: demoSupplierId, nom:'Boutique Ndiaye & Frères', telephone:'77 555 44 33', adresse:'Marché Ocass, Touba', contact:'M. Ndiaye', notes:'Fournisseur régulier — paiement en fin de semaine.'},
+    ],
+    supplierTransactions: [
+      {id:uid('SUPT'), supplierId: demoSupplierId, date:'2026-08-22', type:'prise', description:'Sacs de riz + condiments divers', montant:35000, auteur:'Administrateur Principal'},
+      {id:uid('SUPT'), supplierId: demoSupplierId, date:'2026-08-25', type:'paiement', description:'Règlement partiel', montant:20000, mode:'Espèces', auteur:'Administrateur Principal'},
     ],
   };
 }
@@ -1346,11 +1370,12 @@ const PAGE_TITLES = {
   parametres: ['Paramètres', "Configuration générale de l'application"],
   abonnements: ['Abonnements', "Clients particuliers et entreprises abonnés au restaurant"],
   tresorerie: ['Trésorerie', "Suivi des entrées et sorties de caisse par mode de paiement"],
+  fournisseurs: ['Fournisseurs', "Boutiques partenaires : matières prises à crédit et règlements de facture"],
 };
 
 const ROLE_PAGES = {
-  admin: ['dashboard','menu','achats','ventes','stock','employes','recrutement','categories','rapports','parametres','abonnements','tresorerie'],
-  cashier: ['dashboard','achats','ventes','stock','employes','recrutement','categories','abonnements'],
+  admin: ['dashboard','menu','achats','fournisseurs','ventes','stock','employes','recrutement','categories','rapports','parametres','abonnements','tresorerie'],
+  cashier: ['dashboard','achats','fournisseurs','ventes','stock','employes','recrutement','categories','abonnements'],
 };
 function goTo(page){
   if(currentUser && !ROLE_PAGES[currentUser.role].includes(page)) page = 'dashboard';
@@ -1368,6 +1393,7 @@ function renderPage(page){
   if(page==='dashboard') renderDashboard();
   else if(page==='menu') renderMenu();
   else if(page==='achats') renderAchats();
+  else if(page==='fournisseurs') renderFournisseurs();
   else if(page==='ventes') renderVentes();
   else if(page==='stock') renderStock();
   else if(page==='employes') renderEmployes();
@@ -1794,6 +1820,196 @@ function deleteExpense(id){
   const e = state.expenses.find(e=>e.id===id);
   confirmModal({ message:`Supprimer la dépense « ${escapeHtml(e.description)} » ? Cette action est irréversible.`,
     onConfirm(){ state.expenses = state.expenses.filter(x=>x.id!==id); persist(); renderDepensesTable(); toast('Dépense supprimée'); } });
+}
+
+/* ========================================================
+   PAGE : FOURNISSEURS — boutiques partenaires, matières prises à crédit, règlements
+   ======================================================== */
+let supplierFilter = { q:'' };
+
+function supplierTransactions(supplierId){
+  return state.supplierTransactions.filter(t=>t.supplierId===supplierId).sort((a,b)=> b.date.localeCompare(a.date));
+}
+function supplierBalance(supplierId){
+  return state.supplierTransactions.filter(t=>t.supplierId===supplierId)
+    .reduce((s,t)=> s + (t.type==='prise' ? t.montant : -t.montant), 0);
+}
+
+function renderFournisseurs(){
+  const q = supplierFilter.q.toLowerCase();
+  const rows = state.suppliers.filter(s=> !q || (s.nom+' '+(s.contact||'')).toLowerCase().includes(q)).sort((a,b)=>a.nom.localeCompare(b.nom));
+  $('#supplierTotalTag').textContent = rows.length + ' fournisseur(s)';
+  const totalDette = state.suppliers.reduce((s,sup)=> s + Math.max(supplierBalance(sup.id),0), 0);
+  $('#supplierDetteTag').textContent = '⚠️ Dette totale : ' + fcfa(totalDette);
+  $('#supplierGrid').innerHTML = rows.length ? rows.map(s=>{
+    const solde = supplierBalance(s.id);
+    return `<div class="cat-card" style="cursor:pointer;flex-wrap:wrap;" onclick="viewSupplier('${s.id}')">
+      <div class="cat-dot" style="background:var(--teal-800);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-display);font-weight:600;">${escapeHtml((s.nom||'?')[0])}</div>
+      <div class="meta"><b>${escapeHtml(s.nom)}</b><span>${escapeHtml(s.telephone||'—')}</span></div>
+      <div class="cc-actions">
+        <span class="pill ${solde>0?'pill-warn':'pill-ok'}">${solde>0? 'Doit '+fcfa(solde) : 'À jour'}</span>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty-state"><div class="em">🏪</div><h4>Aucun fournisseur</h4></div>`;
+}
+
+function openSupplierForm(id){
+  const item = id ? state.suppliers.find(s=>s.id===id) : null;
+  openModal({
+    title: item ? 'Modifier le fournisseur' : 'Nouveau fournisseur',
+    bodyHtml:`
+      <form id="supplierForm">
+        <div class="form-grid">
+          <div class="field full"><label>Nom de la boutique / du fournisseur</label><input required name="nom" value="${item?escapeHtml(item.nom):''}" placeholder="Ex : Boutique Ndiaye & Frères"></div>
+          <div class="field"><label>Téléphone</label><input name="telephone" value="${item?escapeHtml(item.telephone||''):''}" placeholder="77 123 45 67"></div>
+          <div class="field"><label>Personne de contact</label><input name="contact" value="${item?escapeHtml(item.contact||''):''}"></div>
+          <div class="field full"><label>Adresse</label><input name="adresse" value="${item?escapeHtml(item.adresse||''):''}"></div>
+          <div class="field full"><label>Notes <span class="hint">(optionnel)</span></label><textarea name="notes">${item?escapeHtml(item.notes||''):''}</textarea></div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">${item?'Enregistrer':'Ajouter'}</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#supplierForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const f = new FormData(e.target);
+        const payload = { nom:f.get('nom').trim(), telephone:f.get('telephone').trim(), contact:f.get('contact').trim(),
+          adresse:f.get('adresse').trim(), notes:f.get('notes').trim() };
+        if(item){ Object.assign(item, payload); toast('Fournisseur modifié'); }
+        else { state.suppliers.push({id:uid('SUP'), ...payload}); toast('Fournisseur ajouté'); }
+        persist(); closeModal(); renderFournisseurs();
+      });
+    }
+  });
+}
+function deleteSupplier(id){
+  const s = state.suppliers.find(s=>s.id===id);
+  const solde = supplierBalance(id);
+  passwordConfirmModal({
+    message: `Supprimer le fournisseur « ${escapeHtml(s.nom)} » ?${solde>0?` ⚠️ Il reste une dette de ${fcfa(solde)} envers ce fournisseur — son historique sera perdu.`:''} Cette action est irréversible.`,
+    onConfirm(){
+      state.suppliers = state.suppliers.filter(x=>x.id!==id);
+      state.supplierTransactions = state.supplierTransactions.filter(t=>t.supplierId!==id);
+      persist(); closeModal(); renderFournisseurs(); toast('Fournisseur supprimé');
+    }
+  });
+}
+
+function viewSupplier(id){
+  const s = state.suppliers.find(s=>s.id===id);
+  if(!s) return;
+  const solde = supplierBalance(id);
+  const txs = supplierTransactions(id);
+  const admin = isAdmin();
+  openModal({
+    title: s.nom,
+    bodyHtml:`
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;">
+        <div>Téléphone : <b>${escapeHtml(s.telephone||'—')}</b>${s.contact?` • Contact : <b>${escapeHtml(s.contact)}</b>`:''}</div>
+        ${s.adresse?`<div>Adresse : <b>${escapeHtml(s.adresse)}</b></div>`:''}
+        ${s.notes?`<div style="color:var(--ink-soft);font-size:12px;">${escapeHtml(s.notes)}</div>`:''}
+        <div style="padding:12px 14px;border-radius:12px;background:${solde>0?'var(--bissap-tint)':'var(--leaf-tint)'};display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-weight:700;color:${solde>0?'var(--bissap-dark)':'var(--leaf-dark)'};">${solde>0?'Solde dû':'Compte à jour'}</span>
+          <span class="mono" style="font-size:18px;font-weight:700;color:${solde>0?'var(--bissap-dark)':'var(--leaf-dark)'};">${fcfa(Math.max(solde,0))}</span>
+        </div>
+        <div class="form-actions" style="justify-content:flex-start;">
+          <button class="btn btn-soft btn-sm" onclick="openSupplierTransactionForm('${s.id}','prise')">📦 Prise de matière</button>
+          <button class="btn btn-soft btn-sm" onclick="openSupplierTransactionForm('${s.id}','paiement')">💵 Régler la facture</button>
+          <button class="btn btn-soft btn-sm" onclick="printSupplierStatement('${s.id}')">🖨️ Relevé de compte</button>
+          <button class="btn btn-ghost btn-sm" onclick="openSupplierForm('${s.id}')">✏️ Modifier</button>
+          ${admin?`<button class="btn btn-danger btn-sm" onclick="deleteSupplier('${s.id}')">🗑️ Supprimer</button>`:''}
+        </div>
+        ${txs.length ? `
+        <div style="border-top:1px solid var(--line-soft);padding-top:10px;margin-top:4px;">
+          <b style="font-size:12px;">Historique</b>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:240px;overflow-y:auto;">
+            ${txs.map(t=>`<div style="border:1px solid var(--line-soft);border-radius:10px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div>${t.type==='prise'?'<span class="pill pill-warn">📦 Prise</span>':'<span class="pill pill-ok">💵 Règlement</span>'} <b>${fcfa(t.montant)}</b></div>
+                <div style="font-size:11px;color:var(--ink-soft);margin-top:2px;">${fmtDate(t.date)} — ${escapeHtml(t.description)}${t.mode?' • '+escapeHtml(t.mode):''}</div>
+              </div>
+              <button class="icon-btn danger" title="Supprimer" onclick="deleteSupplierTransaction('${t.id}','${s.id}')">🗑️</button>
+            </div>`).join('')}
+          </div>
+        </div>` : `<p style="color:var(--ink-soft);font-size:12.5px;">Aucune transaction pour le moment.</p>`}
+      </div>`,
+  });
+}
+
+function openSupplierTransactionForm(supplierId, type){
+  const s = state.suppliers.find(s=>s.id===supplierId);
+  if(!s) return;
+  const isPaiement = type==='paiement';
+  openModal({
+    title: (isPaiement?'Régler la facture — ':'Prise de matière première — ') + s.nom,
+    bodyHtml:`
+      <form id="supTxForm">
+        <div class="form-grid">
+          <div class="field full"><label>Description</label><input required name="description" placeholder="${isPaiement?'Ex : Règlement partiel':'Ex : Sacs de riz, huile, condiments…'}"></div>
+          <div class="field"><label>Montant (FCFA)</label><input required type="number" min="0" name="montant"></div>
+          <div class="field"><label>Date</label><input required type="date" name="date" value="${todayISO()}"></div>
+          ${isPaiement?`<div class="field full"><label>Mode de paiement</label><select name="mode">${TRESO_MODES.map(m=>`<option>${m}</option>`).join('')}</select></div>`:''}
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">${isPaiement?'Enregistrer le règlement':'Enregistrer la prise'}</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#supTxForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const f = new FormData(e.target);
+        const payload = {
+          id: uid('SUPT'), supplierId, type, description: f.get('description').trim(), montant: Number(f.get('montant')),
+          date: f.get('date'), auteur: currentUser.nom,
+        };
+        if(isPaiement) payload.mode = f.get('mode');
+        state.supplierTransactions.push(payload);
+        persist(); closeModal();
+        toast(isPaiement ? 'Règlement enregistré' : 'Prise de matière enregistrée');
+        renderFournisseurs(); viewSupplier(supplierId);
+      });
+    }
+  });
+}
+function deleteSupplierTransaction(id, supplierId){
+  confirmModal({ message:"Supprimer cette opération de l'historique fournisseur ? Cette action est irréversible.",
+    onConfirm(){ state.supplierTransactions = state.supplierTransactions.filter(x=>x.id!==id); persist(); renderFournisseurs(); viewSupplier(supplierId); toast('Opération supprimée'); } });
+}
+
+function printSupplierStatement(id){
+  const s = state.suppliers.find(s=>s.id===id);
+  if(!s) return;
+  const txs = supplierTransactions(id).slice().reverse(); // ordre chronologique pour le relevé
+  const solde = supplierBalance(id);
+  const rows = txs.map(t=>`<tr style="border-top:1px solid #EEF2EE;">
+    <td style="padding:6px 5px;font-size:12px;">${fmtDate(t.date)}</td>
+    <td style="padding:6px 5px;font-size:12px;">${escapeHtml(t.description)}</td>
+    <td style="padding:6px 5px;font-size:12px;text-align:right;color:${t.type==='prise'?'#8E1C2B':'#206B48'};">${t.type==='prise'?'+':'-'}${fmt(t.montant)}</td>
+  </tr>`).join('');
+  const body = `
+  <div style="width:420px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
+    ${printBrandHeader('Relevé de compte fournisseur', 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
+    <div style="padding:20px 22px;background:#fff;">
+      <div style="font-family:'Fraunces',serif;font-size:18px;font-weight:700;">${escapeHtml(s.nom)}</div>
+      <div style="font-size:12px;color:#5C6E67;margin-top:2px;">${escapeHtml(s.telephone||'')}${s.contact?' • '+escapeHtml(s.contact):''}</div>
+      <table style="width:100%;border-collapse:collapse;margin-top:14px;">
+        <thead><tr style="border-bottom:2px solid #DD9A2B;"><th style="text-align:left;padding:6px 5px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;">Date</th><th style="text-align:left;padding:6px 5px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;">Description</th><th style="text-align:right;padding:6px 5px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;">Montant</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="3" style="padding:10px 5px;font-size:12px;color:#93A29B;">Aucune transaction.</td></tr>`}</tbody>
+      </table>
+      <div style="margin-top:16px;padding:14px 16px;background:${solde>0?'#FBE6E9':'#E1F3EA'};border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12.5px;font-weight:700;color:${solde>0?'#8E1C2B':'#206B48'};">${solde>0?'Solde dû':'Compte à jour'}</span>
+        <span class="mono" style="font-size:20px;font-weight:700;color:${solde>0?'#8E1C2B':'#206B48'};">${fcfa(Math.max(solde,0))}</span>
+      </div>
+      <div style="margin-top:14px;font-size:11px;color:#93A29B;">Édité le ${fmtDate(todayISO())}</div>
+    </div>
+    ${printBrandFooter()}
+  </div>`;
+  openPrintWindow('Relevé fournisseur — ' + s.nom, body);
 }
 
 /* ========================================================
@@ -2368,6 +2584,7 @@ function computeTreasury(){
   state.purchases.forEach(p=>{ const m=normalizeTresoMode(p.mode); balance[m]-=p.total; });
   state.expenses.forEach(e=>{ const m=normalizeTresoMode(e.mode); balance[m]-=e.montant; });
   state.salaryPayments.forEach(p=>{ const m=normalizeTresoMode(p.mode); balance[m]-=p.montant; });
+  state.supplierTransactions.forEach(t=>{ if(t.type==='paiement'){ const m=normalizeTresoMode(t.mode); balance[m]-=t.montant; } });
   state.treasuryMovements.forEach(m=>{ const mode=normalizeTresoMode(m.mode); balance[mode] += (m.type==='entree'? m.montant : -m.montant); });
   const total = TRESO_MODES.reduce((s,m)=>s+balance[m],0);
   return { balance, total };
@@ -2382,6 +2599,7 @@ function treasuryFlowLast30Days(){
   state.purchases.forEach(p=>{ if(sorties[p.date]!==undefined) sorties[p.date]+=p.total; });
   state.expenses.forEach(e=>{ if(sorties[e.date]!==undefined) sorties[e.date]+=e.montant; });
   state.salaryPayments.forEach(p=>{ if(sorties[p.date]!==undefined) sorties[p.date]+=p.montant; });
+  state.supplierTransactions.forEach(t=>{ if(t.type==='paiement' && sorties[t.date]!==undefined) sorties[t.date]+=t.montant; });
   state.treasuryMovements.forEach(m=>{
     if(m.type==='entree'){ if(entrees[m.date]!==undefined) entrees[m.date]+=m.montant; }
     else { if(sorties[m.date]!==undefined) sorties[m.date]+=m.montant; }
@@ -2825,8 +3043,8 @@ function printCategoryReport(catName){
 
   const sectionProduits = produits.length ? `
     <table style="width:100%;border-collapse:collapse;margin-bottom:6px;">
-      <thead><tr style="border-bottom:2px solid ${color};">${th('Plat')}${th('Période')}${th('Prix de vente', true)}${th('Coût matière', true)}</tr></thead>
-      <tbody>${produits.map(p=>`<tr style="border-bottom:1px solid #EEF2EE;">${td(escapeHtml(p.nom))}${td(escapeHtml(p.periode||'—'))}${td(fmt(p.prixVente)+' FCFA', true)}${td(fmt(p.coutMatiere)+' FCFA', true)}</tr>`).join('')}</tbody>
+      <thead><tr style="border-bottom:2px solid ${color};">${th('Plat')}${th('Période')}${isAdmin()?th('Prix de vente', true):''}${th('Coût matière', true)}</tr></thead>
+      <tbody>${produits.map(p=>`<tr style="border-bottom:1px solid #EEF2EE;">${td(escapeHtml(p.nom))}${td(escapeHtml(p.periode||'—'))}${isAdmin()?td(fmt(p.prixVente)+' FCFA', true):''}${td(fmt(p.coutMatiere)+' FCFA', true)}</tr>`).join('')}</tbody>
     </table>` : `<p style="font-size:12px;color:#93A29B;">Aucun plat dans cette catégorie.</p>`;
 
   const sectionStock = stockItems.length ? `
@@ -3214,6 +3432,10 @@ async function init(){
   $('#depensesSearch').addEventListener('input', (e)=>{ achatsFilter.q=e.target.value; renderDepensesTable(); });
   $('#btnWipeAchats').addEventListener('click', ()=>wipeModule('purchases','Achats'));
   $('#btnWipeDepenses').addEventListener('click', ()=>wipeModule('expenses','Dépenses'));
+
+  // Fournisseurs
+  $('#btnAddSupplier').addEventListener('click', ()=>openSupplierForm());
+  $('#supplierSearch').addEventListener('input', (e)=>{ supplierFilter.q=e.target.value; renderFournisseurs(); });
 
   // Ventes
   $('#btnAddSale').addEventListener('click', ()=>openSaleForm());
