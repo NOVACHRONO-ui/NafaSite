@@ -650,7 +650,10 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
       <section class="page" id="page-stock">
         <div class="section-head">
           <div><div class="eyebrow">Approvisionnement</div><h2>Gestion du stock</h2></div>
-          <div class="section-actions"><button class="btn btn-primary" id="btnAddStock" data-roles="admin">➕ Ajouter un article</button></div>
+          <div class="section-actions">
+            <button class="btn btn-ghost" id="btnShoppingList">📝 Liste à acheter</button>
+            <button class="btn btn-primary" id="btnAddStock" data-roles="admin">➕ Ajouter un article</button>
+          </div>
         </div>
         <div class="toolbar">
           <div class="search-box"><span class="ic">🔎</span><input id="stockSearch" placeholder="Rechercher un article…"></div>
@@ -1166,6 +1169,7 @@ function seedState(){
       {id:uid('SUPT'), supplierId: demoSupplierId, date:'2026-08-22', type:'prise', description:'Sacs de riz + condiments divers', montant:35000, auteur:'Administrateur Principal'},
       {id:uid('SUPT'), supplierId: demoSupplierId, date:'2026-08-25', type:'paiement', description:'Règlement partiel', montant:20000, mode:'Espèces', auteur:'Administrateur Principal'},
     ],
+    shoppingList: [],
   };
 }
 
@@ -2208,6 +2212,107 @@ function deleteStock(id){
   const s = state.stock.find(s=>s.id===id);
   confirmModal({ message:`Supprimer « ${escapeHtml(s.nom)} » du stock ? Cette action est irréversible.`,
     onConfirm(){ state.stock = state.stock.filter(x=>x.id!==id); persist(); renderStock(); toast('Article supprimé'); } });
+}
+
+/* ========================================================
+   LISTE D'ACHATS À IMPRIMER — modifiable librement, avec suggestion auto depuis les alertes de stock
+   ======================================================== */
+function shoppingRowHtml(item){
+  const it = item || { nom:'', quantite:'', unite:'', note:'' };
+  const rid = uid('sl');
+  return `<div class="form-grid" data-shop-row="${rid}" style="margin-bottom:8px;align-items:end;grid-template-columns:2fr 1fr 1fr 2fr auto;">
+    <div class="field"><label>Article</label><input data-role="nom" value="${escapeHtml(it.nom)}" placeholder="Ex : Tomate fraîche"></div>
+    <div class="field"><label>Quantité</label><input type="number" min="0" step="0.01" data-role="quantite" value="${it.quantite}"></div>
+    <div class="field"><label>Unité</label><input data-role="unite" value="${escapeHtml(it.unite||'')}" placeholder="kg, L…"></div>
+    <div class="field"><label>Note</label><input data-role="note" value="${escapeHtml(it.note||'')}" placeholder="Fournisseur, précision…"></div>
+    <button type="button" class="icon-btn danger" title="Retirer" data-remove-shop-row="${rid}" style="margin-bottom:1px;">🗑️</button>
+  </div>`;
+}
+function openShoppingListModal(){
+  openModal({
+    title: '📝 Liste des ingrédients à acheter',
+    bodyHtml:`
+      <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">
+        Modifiez librement les lignes, ajoutez-en, ou remplissez automatiquement avec les articles actuellement sous leur seuil d'alerte.
+      </p>
+      <div class="form-actions" style="justify-content:flex-start;margin:0 0 12px;padding:0;border:none;">
+        <button type="button" class="btn btn-soft btn-sm" id="btnAutoFillShopping">⚡ Ajouter les articles en alerte</button>
+        <button type="button" class="btn btn-soft btn-sm" id="btnAddShoppingRow">➕ Ajouter une ligne</button>
+      </div>
+      <div id="shoppingRows">${state.shoppingList.map(shoppingRowHtml).join('')}</div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" data-cancel>Fermer</button>
+        <button type="button" class="btn btn-soft" id="btnClearShopping">🗑️ Vider la liste</button>
+        <button type="button" class="btn btn-primary" id="btnSaveAndPrintShopping">🖨️ Enregistrer &amp; imprimer</button>
+      </div>`,
+    onMount(overlay){
+      const rowsBox = overlay.querySelector('#shoppingRows');
+      overlay.querySelector('[data-cancel]').addEventListener('click', ()=>{ saveShoppingListFromForm(overlay); closeModal(); });
+      overlay.querySelector('#btnAddShoppingRow').addEventListener('click', ()=>{
+        rowsBox.insertAdjacentHTML('beforeend', shoppingRowHtml(null));
+      });
+      overlay.querySelector('#btnAutoFillShopping').addEventListener('click', ()=>{
+        const existingNames = $$('[data-shop-row]', overlay).map(r=>r.querySelector('[data-role="nom"]').value.trim().toLowerCase());
+        const alerts = state.stock.filter(s=> Number(s.actuel) < Number(s.min) && !existingNames.includes(s.nom.toLowerCase()));
+        if(!alerts.length){ toast('Aucun nouvel article en alerte à ajouter'); return; }
+        alerts.forEach(s=>{
+          rowsBox.insertAdjacentHTML('beforeend', shoppingRowHtml({ nom:s.nom, quantite: Math.max(s.min*2 - s.actuel, s.min), unite:s.unite, note:'Sous le seuil d\'alerte' }));
+        });
+        toast(alerts.length + ' article(s) ajouté(s)');
+      });
+      rowsBox.addEventListener('click', (e)=>{
+        const rm = e.target.closest('[data-remove-shop-row]');
+        if(rm) overlay.querySelector(`[data-shop-row="${rm.dataset.removeShopRow}"]`).remove();
+      });
+      overlay.querySelector('#btnClearShopping').addEventListener('click', ()=>{
+        confirmModal({ message:'Vider toute la liste d\'achats ?', onConfirm(){ rowsBox.innerHTML=''; state.shoppingList=[]; persist(); toast('Liste vidée'); } });
+      });
+      overlay.querySelector('#btnSaveAndPrintShopping').addEventListener('click', ()=>{
+        saveShoppingListFromForm(overlay);
+        closeModal();
+        printShoppingList();
+      });
+    }
+  });
+}
+function saveShoppingListFromForm(overlay){
+  state.shoppingList = $$('[data-shop-row]', overlay).map(row=>({
+    nom: row.querySelector('[data-role="nom"]').value.trim(),
+    quantite: row.querySelector('[data-role="quantite"]').value,
+    unite: row.querySelector('[data-role="unite"]').value.trim(),
+    note: row.querySelector('[data-role="note"]').value.trim(),
+  })).filter(i=>i.nom);
+  persist();
+}
+function printShoppingList(){
+  const items = state.shoppingList;
+  const rows = items.map(i=>`<tr style="border-top:1px solid #EEF2EE;">
+    <td style="padding:8px 6px;width:26px;"><span style="display:inline-block;width:16px;height:16px;border:2px solid #164F4C;border-radius:4px;"></span></td>
+    <td style="padding:8px 6px;font-size:13px;">${escapeHtml(i.nom)}</td>
+    <td style="padding:8px 6px;font-size:13px;text-align:right;">${i.quantite?fmt(i.quantite):''} ${escapeHtml(i.unite||'')}</td>
+    <td style="padding:8px 6px;font-size:11.5px;color:#5C6E67;">${escapeHtml(i.note||'')}</td>
+    <td style="padding:8px 6px;border-left:1px dashed #E2E8E3;width:80px;"></td>
+  </tr>`).join('');
+  const body = `
+  <div style="width:420px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
+    ${printBrandHeader('Liste des ingrédients à acheter', 'linear-gradient(135deg,#2F8F63,#206B48)')}
+    <div style="padding:18px 20px;background:#fff;">
+      <div style="font-size:11px;color:#93A29B;margin-bottom:10px;">Établie le ${fmtDate(todayISO())} — cochez au fur et à mesure des achats.</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#F3F6F3;">
+          <th style="padding:6px;"></th>
+          <th style="text-align:left;padding:6px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;">Article</th>
+          <th style="text-align:right;padding:6px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;">Qté</th>
+          <th style="text-align:left;padding:6px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;">Note</th>
+          <th style="text-align:left;padding:6px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;border-left:1px dashed #E2E8E3;">Prix</th>
+        </tr></thead>
+        <tbody>${rows || `<tr><td colspan="5" style="padding:14px 6px;color:#93A29B;font-size:12.5px;">Liste vide.</td></tr>`}</tbody>
+      </table>
+      <div style="margin-top:16px;border-top:1px dashed #E2E8E3;padding-top:10px;font-size:11px;color:#93A29B;">Fournisseur / total : ______________________________</div>
+    </div>
+    ${printBrandFooter()}
+  </div>`;
+  openPrintWindow('Liste des ingrédients à acheter', body);
 }
 
 /* ========================================================
@@ -3445,6 +3550,7 @@ async function init(){
   $('#btnExportVentes').addEventListener('click', exportVentesCSV);
 
   // Stock
+  $('#btnShoppingList').addEventListener('click', openShoppingListModal);
   $('#btnAddStock').addEventListener('click', ()=>openStockForm());
   $('#stockSearch').addEventListener('input', (e)=>{ stockFilter.q=e.target.value; renderStock(); });
   $('#stockStatusFilter').addEventListener('change', (e)=>{ stockFilter.status=e.target.value; renderStock(); });
