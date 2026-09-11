@@ -2218,12 +2218,13 @@ function deleteStock(id){
    LISTE D'ACHATS À IMPRIMER — modifiable librement, avec suggestion auto depuis les alertes de stock
    ======================================================== */
 function shoppingRowHtml(item){
-  const it = item || { nom:'', quantite:'', unite:'', note:'' };
+  const it = item || { nom:'', quantite:'', unite:'', prix:'', note:'' };
   const rid = uid('sl');
-  return `<div class="form-grid" data-shop-row="${rid}" style="margin-bottom:8px;align-items:end;grid-template-columns:2fr 1fr 1fr 2fr auto;">
+  return `<div class="form-grid" data-shop-row="${rid}" style="margin-bottom:8px;align-items:end;grid-template-columns:1.8fr 0.9fr 0.8fr 1fr 1.6fr auto;">
     <div class="field"><label>Article</label><input data-role="nom" value="${escapeHtml(it.nom)}" placeholder="Ex : Tomate fraîche"></div>
-    <div class="field"><label>Quantité</label><input type="number" min="0" step="0.01" data-role="quantite" value="${it.quantite}"></div>
+    <div class="field"><label>Quantité</label><input type="number" min="0" step="0.01" data-role="quantite" value="${it.quantite}" class="shop-calc"></div>
     <div class="field"><label>Unité</label><input data-role="unite" value="${escapeHtml(it.unite||'')}" placeholder="kg, L…"></div>
+    <div class="field"><label>Prix (FCFA)</label><input type="number" min="0" step="1" data-role="prix" value="${it.prix||''}" class="shop-calc" placeholder="0"></div>
     <div class="field"><label>Note</label><input data-role="note" value="${escapeHtml(it.note||'')}" placeholder="Fournisseur, précision…"></div>
     <button type="button" class="icon-btn danger" title="Retirer" data-remove-shop-row="${rid}" style="margin-bottom:1px;">🗑️</button>
   </div>`;
@@ -2234,12 +2235,16 @@ function openShoppingListModal(){
     bodyHtml:`
       <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">
         Modifiez librement les lignes, ajoutez-en, ou remplissez automatiquement avec les articles actuellement sous leur seuil d'alerte.
+        Le prix est le montant total pour la ligne (pas le prix unitaire).
       </p>
       <div class="form-actions" style="justify-content:flex-start;margin:0 0 12px;padding:0;border:none;">
         <button type="button" class="btn btn-soft btn-sm" id="btnAutoFillShopping">⚡ Ajouter les articles en alerte</button>
         <button type="button" class="btn btn-soft btn-sm" id="btnAddShoppingRow">➕ Ajouter une ligne</button>
       </div>
       <div id="shoppingRows">${state.shoppingList.map(shoppingRowHtml).join('')}</div>
+      <div style="display:flex;justify-content:flex-end;padding:10px 4px 0;border-top:1px solid var(--line-soft);margin-top:8px;">
+        <div style="font-size:13.5px;">Total : <b class="mono" id="shoppingTotalDisplay" style="font-size:16px;">0 FCFA</b></div>
+      </div>
       <div class="form-actions">
         <button type="button" class="btn btn-ghost" data-cancel>Fermer</button>
         <button type="button" class="btn btn-soft" id="btnClearShopping">🗑️ Vider la liste</button>
@@ -2247,6 +2252,12 @@ function openShoppingListModal(){
       </div>`,
     onMount(overlay){
       const rowsBox = overlay.querySelector('#shoppingRows');
+      const totalDisplay = overlay.querySelector('#shoppingTotalDisplay');
+      const recalcTotal = ()=>{
+        const total = $$('[data-shop-row]', overlay).reduce((s,row)=> s + (Number(row.querySelector('[data-role="prix"]').value)||0), 0);
+        totalDisplay.textContent = fcfa(total);
+      };
+      rowsBox.addEventListener('input', (e)=>{ if(e.target.classList.contains('shop-calc')) recalcTotal(); });
       overlay.querySelector('[data-cancel]').addEventListener('click', ()=>{ saveShoppingListFromForm(overlay); closeModal(); });
       overlay.querySelector('#btnAddShoppingRow').addEventListener('click', ()=>{
         rowsBox.insertAdjacentHTML('beforeend', shoppingRowHtml(null));
@@ -2256,22 +2267,24 @@ function openShoppingListModal(){
         const alerts = state.stock.filter(s=> Number(s.actuel) < Number(s.min) && !existingNames.includes(s.nom.toLowerCase()));
         if(!alerts.length){ toast('Aucun nouvel article en alerte à ajouter'); return; }
         alerts.forEach(s=>{
-          rowsBox.insertAdjacentHTML('beforeend', shoppingRowHtml({ nom:s.nom, quantite: Math.max(s.min*2 - s.actuel, s.min), unite:s.unite, note:'Sous le seuil d\'alerte' }));
+          rowsBox.insertAdjacentHTML('beforeend', shoppingRowHtml({ nom:s.nom, quantite: Math.max(s.min*2 - s.actuel, s.min), unite:s.unite, prix:'', note:'Sous le seuil d\'alerte' }));
         });
         toast(alerts.length + ' article(s) ajouté(s)');
+        recalcTotal();
       });
       rowsBox.addEventListener('click', (e)=>{
         const rm = e.target.closest('[data-remove-shop-row]');
-        if(rm) overlay.querySelector(`[data-shop-row="${rm.dataset.removeShopRow}"]`).remove();
+        if(rm){ overlay.querySelector(`[data-shop-row="${rm.dataset.removeShopRow}"]`).remove(); recalcTotal(); }
       });
       overlay.querySelector('#btnClearShopping').addEventListener('click', ()=>{
-        confirmModal({ message:'Vider toute la liste d\'achats ?', onConfirm(){ rowsBox.innerHTML=''; state.shoppingList=[]; persist(); toast('Liste vidée'); } });
+        confirmModal({ message:'Vider toute la liste d\'achats ?', onConfirm(){ rowsBox.innerHTML=''; state.shoppingList=[]; persist(); toast('Liste vidée'); recalcTotal(); } });
       });
       overlay.querySelector('#btnSaveAndPrintShopping').addEventListener('click', ()=>{
         saveShoppingListFromForm(overlay);
         closeModal();
         printShoppingList();
       });
+      recalcTotal();
     }
   });
 }
@@ -2280,18 +2293,20 @@ function saveShoppingListFromForm(overlay){
     nom: row.querySelector('[data-role="nom"]').value.trim(),
     quantite: row.querySelector('[data-role="quantite"]').value,
     unite: row.querySelector('[data-role="unite"]').value.trim(),
+    prix: row.querySelector('[data-role="prix"]').value,
     note: row.querySelector('[data-role="note"]').value.trim(),
   })).filter(i=>i.nom);
   persist();
 }
 function printShoppingList(){
   const items = state.shoppingList;
+  const total = items.reduce((s,i)=> s + (Number(i.prix)||0), 0);
   const rows = items.map(i=>`<tr style="border-top:1px solid #EEF2EE;">
     <td style="padding:8px 6px;width:26px;"><span style="display:inline-block;width:16px;height:16px;border:2px solid #164F4C;border-radius:4px;"></span></td>
     <td style="padding:8px 6px;font-size:13px;">${escapeHtml(i.nom)}</td>
     <td style="padding:8px 6px;font-size:13px;text-align:right;">${i.quantite?fmt(i.quantite):''} ${escapeHtml(i.unite||'')}</td>
     <td style="padding:8px 6px;font-size:11.5px;color:#5C6E67;">${escapeHtml(i.note||'')}</td>
-    <td style="padding:8px 6px;border-left:1px dashed #E2E8E3;width:80px;"></td>
+    <td style="padding:8px 6px;border-left:1px dashed #E2E8E3;text-align:right;font-size:13px;font-weight:700;">${i.prix?fmt(i.prix):''}</td>
   </tr>`).join('');
   const body = `
   <div style="width:420px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
@@ -2304,11 +2319,15 @@ function printShoppingList(){
           <th style="text-align:left;padding:6px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;">Article</th>
           <th style="text-align:right;padding:6px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;">Qté</th>
           <th style="text-align:left;padding:6px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;">Note</th>
-          <th style="text-align:left;padding:6px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;border-left:1px dashed #E2E8E3;">Prix</th>
+          <th style="text-align:right;padding:6px;font-size:10.5px;text-transform:uppercase;color:#5C6E67;border-left:1px dashed #E2E8E3;">Prix</th>
         </tr></thead>
         <tbody>${rows || `<tr><td colspan="5" style="padding:14px 6px;color:#93A29B;font-size:12.5px;">Liste vide.</td></tr>`}</tbody>
       </table>
-      <div style="margin-top:16px;border-top:1px dashed #E2E8E3;padding-top:10px;font-size:11px;color:#93A29B;">Fournisseur / total : ______________________________</div>
+      <div style="margin-top:14px;padding:12px 14px;background:#E1F3EA;border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12.5px;font-weight:700;color:#206B48;">Total</span>
+        <span class="mono" style="font-size:18px;font-weight:700;color:#206B48;">${fcfa(total)}</span>
+      </div>
+      <div style="margin-top:14px;border-top:1px dashed #E2E8E3;padding-top:10px;font-size:11px;color:#93A29B;">Fournisseur : ______________________________</div>
     </div>
     ${printBrandFooter()}
   </div>`;
