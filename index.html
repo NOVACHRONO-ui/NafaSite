@@ -576,6 +576,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
             <select class="select-filter" id="achatsCatFilter"></select>
             <span class="pill pill-neutral" id="achatsTotalTag"></span>
             <div class="spacer"></div>
+            <button class="btn btn-ghost" id="btnPrintDailyPurchases">🖨️ Achats du jour</button>
             <button class="btn btn-danger btn-sm" id="btnWipeAchats" data-roles="admin">🗑️ Tout supprimer</button>
             <button class="btn btn-primary" id="btnAddPurchase">➕ Ajouter un achat</button>
           </div>
@@ -1783,6 +1784,44 @@ function viewPurchase(id){
       <div>Prix unitaire : <b>${fcfa(p.prixUnitaire)}</b></div>
       <div style="border-top:1px solid var(--line-soft);padding-top:10px;">Total : <b class="mono" style="font-size:16px;">${fcfa(p.total)}</b></div>
     </div>` });
+}
+
+function printDailyPurchases(){
+  const today = todayISO();
+  const todays = state.purchases.filter(p=>p.date===today).sort((a,b)=> a.categorie.localeCompare(b.categorie) || a.nom.localeCompare(b.nom));
+  const total = todays.reduce((s,p)=>s+p.total,0);
+  const rows = todays.map(p=>`<tr style="border-top:1px solid #EEF2EE;">
+    <td style="padding:6px 5px;font-size:12px;">${escapeHtml(p.nom)}</td>
+    <td style="padding:6px 5px;font-size:10.5px;color:#5C6E67;"><span class="cat-swatch" style="background:${catColor(p.categorie)};display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;"></span>${escapeHtml(p.categorie)}</td>
+    <td style="padding:6px 5px;font-size:11px;">${escapeHtml(p.fournisseur)}</td>
+    <td style="padding:6px 5px;font-size:12px;text-align:right;">${fmt(p.quantite)} ${escapeHtml(p.unite)}</td>
+    <td style="padding:6px 5px;font-size:12px;text-align:right;">${fmt(p.prixUnitaire)}</td>
+    <td style="padding:6px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(p.total)}</td>
+  </tr>`).join('');
+  const body = `
+  <div style="width:500px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
+    ${printBrandHeader('Achats du jour — toutes catégories', 'linear-gradient(135deg,#DD9A2B,#B67A1B)')}
+    <div style="padding:18px 20px;background:#fff;">
+      <div style="font-size:11px;color:#93A29B;margin-bottom:10px;">${new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})} — ${todays.length} achat(s)</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#F3F6F3;">
+          <th style="text-align:left;padding:6px 5px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Produit</th>
+          <th style="text-align:left;padding:6px 5px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Catégorie</th>
+          <th style="text-align:left;padding:6px 5px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Fournisseur</th>
+          <th style="text-align:right;padding:6px 5px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Qté</th>
+          <th style="text-align:right;padding:6px 5px;font-size:10px;text-transform:uppercase;color:#5C6E67;">P.U.</th>
+          <th style="text-align:right;padding:6px 5px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Total</th>
+        </tr></thead>
+        <tbody>${rows || `<tr><td colspan="6" style="padding:14px 5px;color:#93A29B;font-size:12.5px;">Aucun achat enregistré aujourd'hui.</td></tr>`}</tbody>
+      </table>
+      <div style="margin-top:14px;padding:12px 14px;background:#FBEEDA;border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12.5px;font-weight:700;color:#B67A1B;">Total des achats du jour</span>
+        <span class="mono" style="font-size:18px;font-weight:700;color:#B67A1B;">${fcfa(total)}</span>
+      </div>
+    </div>
+    ${printBrandFooter()}
+  </div>`;
+  openPrintWindow('Achats du jour', body);
 }
 
 function openExpenseForm(id){
@@ -3550,6 +3589,7 @@ async function init(){
   // Achats
   $('#achatsTabs').addEventListener('click', (e)=>{ const b=e.target.closest('button'); if(!b) return; achatsTab=b.dataset.tab; renderAchats(); });
   $('#btnAddPurchase').addEventListener('click', ()=>openPurchaseForm());
+  $('#btnPrintDailyPurchases').addEventListener('click', printDailyPurchases);
   $('#btnAddExpense').addEventListener('click', ()=>openExpenseForm());
   $('#achatsSearch').addEventListener('input', (e)=>{ achatsFilter.q=e.target.value; renderAchats(); });
   $('#achatsCatFilter').addEventListener('change', (e)=>{ achatsFilter.cat=e.target.value; renderAchatsTable(); });
