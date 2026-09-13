@@ -483,6 +483,9 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
 
       <!-- ================= DASHBOARD ================= -->
       <section class="page" id="page-dashboard">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+          <button class="btn btn-ghost" id="btnDailyReport">🖨️ Rapport du jour</button>
+        </div>
         <div class="kpi-grid" id="dashKpis"></div>
 
         <div class="charts-grid">
@@ -625,6 +628,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         <div class="section-head">
           <div><div class="eyebrow">Activité commerciale</div><h2>Produits vendus</h2></div>
           <div class="section-actions">
+            <button class="btn btn-ghost" id="btnPrintSalesByDay">🖨️ Ventes par jour</button>
             <button class="btn btn-ghost" id="btnExportVentes">⬇️ Exporter CSV</button>
             <button class="btn btn-primary" id="btnAddSale">➕ Enregistrer une vente</button>
           </div>
@@ -1539,6 +1543,120 @@ function renderTopFlopChart(mode){
 }
 
 /* ========================================================
+   RAPPORT JOURNALIER — résumé imprimable de tout ce qui s'est passé un jour donné
+   ======================================================== */
+function openDailyReportModal(){
+  openModal({
+    title: '🖨️ Rapport journalier', narrow:true,
+    bodyHtml:`
+      <div class="field">
+        <label>Date du rapport</label>
+        <input type="date" id="dailyReportDate" value="${todayISO()}">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+        <button type="button" class="btn btn-primary" id="btnGenerateDailyReport">🖨️ Générer le rapport</button>
+      </div>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#btnGenerateDailyReport').addEventListener('click', ()=>{
+        const d = overlay.querySelector('#dailyReportDate').value || todayISO();
+        closeModal();
+        printDailyReport(d);
+      });
+    }
+  });
+}
+
+function printDailyReport(date){
+  const admin = isAdmin();
+  const ventes = state.sales.filter(s=>s.date===date);
+  const achats = state.purchases.filter(p=>p.date===date);
+  const depenses = state.expenses.filter(e=>e.date===date);
+  const salaires = state.salaryPayments.filter(p=>p.date===date);
+  const mouvements = state.treasuryMovements.filter(m=>m.date===date);
+  const fournisseurOps = state.supplierTransactions.filter(t=>t.date===date);
+  const nouveauxAbonnes = state.subscriptions.filter(s=>s.dateDebut===date);
+  const recrutements = state.employees.filter(e=>e.dateEmbauche===date);
+  const stockAlerts = state.stock.filter(s=>Number(s.actuel)<Number(s.min));
+
+  const totalVentes = ventes.reduce((s,v)=>s+v.total,0);
+  const totalAchats = achats.reduce((s,v)=>s+v.total,0);
+  const totalDepenses = depenses.reduce((s,v)=>s+v.montant,0);
+  const totalSalaires = salaires.reduce((s,v)=>s+v.montant,0);
+  const totalFournPaiements = fournisseurOps.filter(t=>t.type==='paiement').reduce((s,t)=>s+t.montant,0);
+  const totalFournPrises = fournisseurOps.filter(t=>t.type==='prise').reduce((s,t)=>s+t.montant,0);
+  const beneficeJour = totalVentes - totalAchats - totalDepenses - totalSalaires - totalFournPaiements;
+  const byPay = {};
+  ventes.forEach(v=>{ byPay[v.paiement] = (byPay[v.paiement]||0) + v.total; });
+
+  const kpiCards = [
+    {label:'Ventes', value:fcfa(totalVentes), color:'#206B48', bg:'#E1F3EA'},
+    {label:'Achats', value:fcfa(totalAchats), color:'#B67A1B', bg:'#FBEEDA'},
+    {label:'Dépenses', value:fcfa(totalDepenses), color:'#8E1C2B', bg:'#FBE6E9'},
+  ];
+  if(admin){
+    kpiCards.push({label:'Salaires versés', value:fcfa(totalSalaires), color:'#8E1C2B', bg:'#FBE6E9'});
+    kpiCards.push({label:'Bénéfice du jour', value:fcfa(beneficeJour), color: beneficeJour>=0?'#206B48':'#8E1C2B', bg: beneficeJour>=0?'#E1F3EA':'#FBE6E9'});
+  }
+  const kpiHtml = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;">
+    ${kpiCards.map(k=>`<div style="background:${k.bg};border-radius:10px;padding:8px 10px;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:${k.color};font-weight:700;">${k.label}</div>
+      <div class="mono" style="font-size:14px;font-weight:700;color:${k.color};margin-top:2px;">${k.value}</div>
+    </div>`).join('')}
+  </div>`;
+
+  function miniTable(title, rows, cols){
+    if(!rows.length) return '';
+    return `<div style="margin-bottom:14px;">
+      <div style="font-size:11.5px;font-weight:700;color:#8E1C2B;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #DD9A2B;padding-bottom:4px;margin-bottom:6px;">${title}</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#F3F6F3;">${cols.map(c=>`<th style="text-align:${c.right?'right':'left'};padding:4px 5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">${c.label}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  const ventesRows = ventes.map(v=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(v.produitNom)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;">${fmt(v.quantite)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(v.paiement)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(v.total)}</td></tr>`).join('');
+  const achatsRows = achats.map(p=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(p.nom)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(p.fournisseur)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;">${fmt(p.quantite)} ${escapeHtml(p.unite)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(p.total)}</td></tr>`).join('');
+  const depensesRows = depenses.map(e=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(e.categorie)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(e.description)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(e.montant)}</td></tr>`).join('');
+  const mouvRows = mouvements.map(m=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${m.type==='entree'?'⬆️':'⬇️'} ${escapeHtml(m.categorie)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(m.description)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(m.mode)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${m.type==='entree'?'+':'-'}${fmt(m.montant)}</td></tr>`).join('');
+  const fournRows = fournisseurOps.map(t=>{
+    const sup = state.suppliers.find(s=>s.id===t.supplierId);
+    return `<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(sup?sup.nom:'—')}</td><td style="padding:4px 5px;font-size:11px;">${t.type==='prise'?'📦 Prise':'💵 Règlement'}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(t.description)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(t.montant)}</td></tr>`;
+  }).join('');
+  const abonnesRows = nouveauxAbonnes.map(s=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${s.type==='entreprise'?'🏢':'👤'} ${escapeHtml(s.nom)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(s.typeAbonnement||'')}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(s.montant)}</td></tr>`).join('');
+  const recrutRows = recrutements.map(e=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(e.nom)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(e.poste)}</td></tr>`).join('');
+  const alertRows = stockAlerts.map(s=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(s.nom)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;">${fmt(s.actuel)} ${escapeHtml(s.unite)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;color:#93A29B;">seuil ${fmt(s.min)}</td></tr>`).join('');
+
+  const payHtml = Object.keys(byPay).length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+    ${Object.keys(byPay).map(m=>`<span style="background:#F3F6F3;border-radius:20px;padding:4px 10px;font-size:11px;">${escapeHtml(m)} : <b>${fmt(byPay[m])}</b></span>`).join('')}
+  </div>` : '';
+
+  const body = `
+  <div style="width:480px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
+    ${printBrandHeader('Rapport journalier', 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
+    <div style="padding:18px 20px;background:#fff;">
+      <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:700;margin-bottom:2px;">${fmtDate(date)}</div>
+      <div style="font-size:11px;color:#93A29B;margin-bottom:14px;">Rapport édité le ${fmtDate(todayISO())}</div>
+      ${kpiHtml}
+      ${payHtml}
+      ${miniTable('Ventes ('+ventes.length+')', ventesRows, [{label:'Produit'},{label:'Qté',right:true},{label:'Paiement'},{label:'Total',right:true}])}
+      ${miniTable('Achats ('+achats.length+')', achatsRows, [{label:'Produit'},{label:'Fournisseur'},{label:'Qté',right:true},{label:'Total',right:true}])}
+      ${miniTable('Dépenses ('+depenses.length+')', depensesRows, [{label:'Catégorie'},{label:'Description'},{label:'Montant',right:true}])}
+      ${miniTable('Mouvements de caisse manuels ('+mouvements.length+')', mouvRows, [{label:'Catégorie'},{label:'Description'},{label:'Mode'},{label:'Montant',right:true}])}
+      ${miniTable('Opérations fournisseurs ('+fournisseurOps.length+')', fournRows, [{label:'Fournisseur'},{label:'Type'},{label:'Description'},{label:'Montant',right:true}])}
+      ${miniTable('Nouveaux abonnés ('+nouveauxAbonnes.length+')', abonnesRows, [{label:'Nom'},{label:'Abonnement'},{label:'Montant',right:true}])}
+      ${miniTable('Recrutements ('+recrutements.length+')', recrutRows, [{label:'Employé'},{label:'Poste'}])}
+      ${miniTable('⚠️ Alertes stock actuelles ('+stockAlerts.length+')', alertRows, [{label:'Article'},{label:'Stock',right:true},{label:'Seuil',right:true}])}
+      ${!ventes.length && !achats.length && !depenses.length && !mouvements.length && !fournisseurOps.length && !nouveauxAbonnes.length && !recrutements.length ? '<p style="color:#5C6E67;font-size:12.5px;">Aucune activité enregistrée ce jour-là.</p>' : ''}
+    </div>
+    ${printBrandFooter()}
+  </div>`;
+  openPrintWindow('Rapport journalier — ' + date, body);
+}
+
+/* ========================================================
    PAGE : MENU / PLATS & RECETTES (liaison avec le stock)
    ======================================================== */
 let menuFilter = { q:'', periode:'' };
@@ -2149,6 +2267,54 @@ function deleteSale(id){
       applyRecipeToStock(s.produitId, s.quantite, -1);
       state.sales = state.sales.filter(x=>x.id!==id); persist(); renderVentes(); toast('Vente supprimée, stock recrédité');
     } });
+}
+
+function printSalesByDay(){
+  const byDay = {};
+  state.sales.forEach(s=>{ (byDay[s.date]=byDay[s.date]||[]).push(s); });
+  const days = Object.keys(byDay).sort((a,b)=> b.localeCompare(a)); // du plus récent au plus ancien
+  const grandTotal = state.sales.reduce((s,v)=>s+v.total,0);
+  const sections = days.map(d=>{
+    const lignes = byDay[d].sort((a,b)=> a.produitNom.localeCompare(b.produitNom));
+    const totalJour = lignes.reduce((s,v)=>s+v.total,0);
+    const rows = lignes.map(v=>`<tr style="border-top:1px solid #EEF2EE;">
+      <td style="padding:5px 5px;font-size:12px;">${escapeHtml(v.produitNom)}</td>
+      <td style="padding:5px 5px;font-size:12px;text-align:right;">${fmt(v.quantite)}</td>
+      <td style="padding:5px 5px;font-size:12px;text-align:right;">${fmt(v.prixUnitaire)}</td>
+      <td style="padding:5px 5px;font-size:11px;">${escapeHtml(v.paiement)}</td>
+      <td style="padding:5px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(v.total)}</td>
+    </tr>`).join('');
+    return `<div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #DD9A2B;padding-bottom:5px;margin-bottom:6px;">
+        <span style="font-family:'Fraunces',serif;font-size:13.5px;font-weight:700;color:#8E1C2B;">${fmtDate(d)}</span>
+        <span style="font-size:12px;font-weight:700;color:#206B48;">${fcfa(totalJour)}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#F3F6F3;">
+          <th style="text-align:left;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Produit</th>
+          <th style="text-align:right;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Qté</th>
+          <th style="text-align:right;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">P.U.</th>
+          <th style="text-align:left;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Paiement</th>
+          <th style="text-align:right;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Total</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+  const body = `
+  <div style="width:480px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
+    ${printBrandHeader('Ventes par jour', 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
+    <div style="padding:18px 20px;background:#fff;">
+      <div style="font-size:11px;color:#93A29B;margin-bottom:12px;">Édité le ${fmtDate(todayISO())} — ${days.length} jour(s), ${state.sales.length} vente(s)</div>
+      ${sections || '<p style="color:#5C6E67;font-size:13px;">Aucune vente enregistrée.</p>'}
+      <div style="margin-top:6px;padding:14px 16px;background:#E1F3EA;border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:13px;font-weight:700;color:#206B48;">Total général</span>
+        <span class="mono" style="font-size:19px;font-weight:700;color:#206B48;">${fcfa(grandTotal)}</span>
+      </div>
+    </div>
+    ${printBrandFooter()}
+  </div>`;
+  openPrintWindow('Ventes par jour', body);
 }
 
 /* ========================================================
@@ -3603,6 +3769,7 @@ async function init(){
 
   // Ventes
   $('#btnAddSale').addEventListener('click', ()=>openSaleForm());
+  $('#btnPrintSalesByDay').addEventListener('click', printSalesByDay);
   $('#ventesSearch').addEventListener('input', (e)=>{ ventesFilter.q=e.target.value; renderVentes(); });
   $('#ventesPaiementFilter').addEventListener('change', (e)=>{ ventesFilter.paiement=e.target.value; renderVentes(); });
   $('#btnWipeVentes').addEventListener('click', ()=>wipeModule('sales','Ventes'));
@@ -3670,6 +3837,7 @@ async function init(){
 
   // Top/Flop tabs (dashboard)
   $('#topFlopTabs').addEventListener('click', (e)=>{ const b=e.target.closest('button'); if(!b) return; renderTopFlopChart(b.dataset.mode); });
+  $('#btnDailyReport').addEventListener('click', openDailyReportModal);
 
   // Paramètres
   $('#settingsForm').addEventListener('submit', saveSettings);
