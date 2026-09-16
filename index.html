@@ -439,6 +439,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
       <div class="nav-label">Équipe</div>
       <button class="nav-btn" data-target="employes" data-roles="admin,cashier"><span class="ic">👥</span><span class="lbl">Gestion des employés</span></button>
       <button class="nav-btn accent" data-target="recrutement" data-roles="admin,cashier"><span class="ic">➕</span><span class="lbl">Recruter un employé</span></button>
+      <button class="nav-btn" data-target="equipes" data-roles="admin,cashier"><span class="ic">🧑‍🤝‍🧑</span><span class="lbl">Équipes &amp; planning</span></button>
     </div>
 
     <div class="nav-group">
@@ -699,7 +700,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Employé</th><th>Poste</th><th>Repos</th><th>Embauche</th><th data-roles="admin">Salaire</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Employé</th><th>Poste</th><th>Repos</th><th>Embauche</th><th data-roles="admin">Salaire</th><th data-roles="admin">Cycle de paie</th><th>Statut</th><th></th></tr></thead>
             <tbody id="employesTbody"></tbody>
           </table>
         </div>
@@ -754,6 +755,15 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
           <div class="panel-head"><h3>Évolution des recrutements</h3></div>
           <div class="panel-body"><div class="chart-wrap"><canvas id="chartRecrutMini"></canvas></div></div>
         </div>
+      </section>
+
+      <!-- ================= ÉQUIPES & PLANNING ================= -->
+      <section class="page" id="page-equipes">
+        <div class="section-head">
+          <div><div class="eyebrow">Équipe</div><h2>Équipes &amp; planning de rotation</h2></div>
+          <div class="section-actions"><button class="btn btn-primary" id="btnAddTeam" data-roles="admin">➕ Nouvelle équipe</button></div>
+        </div>
+        <div class="cat-grid" id="teamsGrid"></div>
       </section>
 
       <!-- ================= TRÉSORERIE ================= -->
@@ -1175,6 +1185,7 @@ function seedState(){
       {id:uid('SUPT'), supplierId: demoSupplierId, date:'2026-08-25', type:'paiement', description:'Règlement partiel', montant:20000, mode:'Espèces', auteur:'Administrateur Principal'},
     ],
     shoppingList: [],
+    teams: [],
   };
 }
 
@@ -1378,13 +1389,14 @@ const PAGE_TITLES = {
   rapports: ['Rapports et statistiques', "Analyses détaillées de la performance"],
   parametres: ['Paramètres', "Configuration générale de l'application"],
   abonnements: ['Abonnements', "Clients particuliers et entreprises abonnés au restaurant"],
+  equipes: ['Équipes & planning', "Composition des équipes, rotation hebdomadaire et performance collective"],
   tresorerie: ['Trésorerie', "Suivi des entrées et sorties de caisse par mode de paiement"],
   fournisseurs: ['Fournisseurs', "Boutiques partenaires : matières prises à crédit et règlements de facture"],
 };
 
 const ROLE_PAGES = {
-  admin: ['dashboard','menu','achats','fournisseurs','ventes','stock','employes','recrutement','categories','rapports','parametres','abonnements','tresorerie'],
-  cashier: ['dashboard','achats','fournisseurs','ventes','stock','employes','recrutement','categories','abonnements'],
+  admin: ['dashboard','menu','achats','fournisseurs','ventes','stock','employes','recrutement','equipes','categories','rapports','parametres','abonnements','tresorerie'],
+  cashier: ['dashboard','achats','fournisseurs','ventes','stock','employes','recrutement','equipes','categories','abonnements'],
 };
 function goTo(page){
   if(currentUser && !ROLE_PAGES[currentUser.role].includes(page)) page = 'dashboard';
@@ -1407,6 +1419,7 @@ function renderPage(page){
   else if(page==='stock') renderStock();
   else if(page==='employes') renderEmployes();
   else if(page==='recrutement') renderRecrutement();
+  else if(page==='equipes') renderEquipes();
   else if(page==='categories') renderCategories();
   else if(page==='rapports') renderRapports();
   else if(page==='parametres') renderParametres();
@@ -1444,6 +1457,7 @@ function renderDashboard(){
     admin && {label:"Total achats", value:fcfa(t.purchasesTotal), icon:'🛒', accent:'--teal-800', tint:'--line-soft'},
     admin && {label:"Total dépenses", value:fcfa(t.expensesTotal), icon:'💰', accent:'--bissap', tint:'--bissap-tint'},
     admin && {label:"Masse salariale", value:fcfa(t.payroll), note:activeEmployees().length+" employé(s) actif(s)", icon:'👥', accent:'--teal-800', tint:'--line-soft'},
+    admin && {label:"Salaires versés (mois)", value:fcfa(state.salaryPayments.filter(p=>monthKey(p.date)===todayISO().slice(0,7)).reduce((s,p)=>s+p.montant,0)), note:state.salaryPayments.filter(p=>monthKey(p.date)===todayISO().slice(0,7)).length+" paiement(s) ce mois-ci", icon:'💵', accent:'--leaf', tint:'--leaf-tint'},
     {label:"Panier moyen", value:fcfa(t.panierMoyen), note:t.orders+" commande(s)", icon:'🧾', accent:'--sky', tint:'--sky-tint'},
     {label:"Alertes stock", value:t.alerts+" article(s)", icon:'⚠️', accent:'--bissap', tint:'--bissap-tint'},
   ].filter(Boolean);
@@ -1590,6 +1604,30 @@ function printDailyReport(date){
   const byPay = {};
   ventes.forEach(v=>{ byPay[v.paiement] = (byPay[v.paiement]||0) + v.total; });
 
+  // Produits les plus vendus / les moins vendus ce jour-là (quantité)
+  const qtyByProduct = {};
+  ventes.forEach(v=>{ qtyByProduct[v.produitNom] = (qtyByProduct[v.produitNom]||0) + Number(v.quantite||0); });
+  const qtyEntries = Object.entries(qtyByProduct);
+  const topProduits = [...qtyEntries].sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const flopProduits = [...qtyEntries].sort((a,b)=>a[1]-b[1]).slice(0,5);
+  function miniBarChart(title, entries, color){
+    if(!entries.length) return '';
+    const max = Math.max(...entries.map(e=>e[1]), 1);
+    const rows = entries.map(([nom,qty])=>`
+      <div style="margin-bottom:7px;">
+        <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:2px;">
+          <span>${escapeHtml(nom)}</span><span style="font-weight:700;">${fmt(qty)}</span>
+        </div>
+        <div style="background:#EEF2EE;border-radius:5px;height:8px;overflow:hidden;">
+          <div style="background:${color};height:100%;width:${Math.round(qty/max*100)}%;border-radius:5px;"></div>
+        </div>
+      </div>`).join('');
+    return `<div style="margin-bottom:14px;">
+      <div style="font-size:11.5px;font-weight:700;color:#8E1C2B;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #DD9A2B;padding-bottom:4px;margin-bottom:8px;">${title}</div>
+      ${rows}
+    </div>`;
+  }
+
   const kpiCards = [
     {label:'Ventes', value:fcfa(totalVentes), color:'#206B48', bg:'#E1F3EA'},
     {label:'Achats', value:fcfa(totalAchats), color:'#B67A1B', bg:'#FBEEDA'},
@@ -1641,6 +1679,8 @@ function printDailyReport(date){
       <div style="font-size:11px;color:#93A29B;margin-bottom:14px;">Rapport édité le ${fmtDate(todayISO())}</div>
       ${kpiHtml}
       ${payHtml}
+      ${miniBarChart('🏆 Produits les plus vendus (qté)', topProduits, '#C0273A')}
+      ${miniBarChart('📉 Produits les moins vendus (qté)', flopProduits, '#DD9A2B')}
       ${miniTable('Ventes ('+ventes.length+')', ventesRows, [{label:'Produit'},{label:'Qté',right:true},{label:'Paiement'},{label:'Total',right:true}])}
       ${miniTable('Achats ('+achats.length+')', achatsRows, [{label:'Produit'},{label:'Fournisseur'},{label:'Qté',right:true},{label:'Total',right:true}])}
       ${miniTable('Dépenses ('+depenses.length+')', depensesRows, [{label:'Catégorie'},{label:'Description'},{label:'Montant',right:true}])}
@@ -2562,6 +2602,7 @@ function renderEmployes(){
       <td>${restBadgeHtml(e.reposSlot)}</td>
       <td>${fmtDate(e.dateEmbauche)}</td>
       ${admin ? `<td class="num">${fmt(e.salaire)}</td>` : ''}
+      ${admin ? `<td>${paymentStatusBadge(e)}</td>` : ''}
       <td>${e.statut==='Actif'?'<span class="pill pill-ok">Actif</span>':'<span class="pill pill-neutral">Inactif</span>'}</td>
       <td class="actions"><div class="row-actions">
         <button class="icon-btn" title="Détails" onclick="viewEmployee('${e.id}')">👁️</button>
@@ -2571,7 +2612,7 @@ function renderEmployes(){
         <button class="icon-btn" title="Modifier" onclick="openEmployeeForm('${e.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteEmployee('${e.id}')">🗑️</button>` : ''}
       </div></td>
-    </tr>`).join('') : `<tr class="empty-row"><td colspan="7">Aucun employé trouvé.</td></tr>`;
+    </tr>`).join('') : `<tr class="empty-row"><td colspan="8">Aucun employé trouvé.</td></tr>`;
 }
 
 function openEmployeeForm(id, redirectAfter){
@@ -2664,11 +2705,12 @@ function viewEmployee(id){
       </div>
       <div>Téléphone : <b>${escapeHtml(e.telephone)}</b></div>
       <div>Date d'embauche : <b>${fmtDate(e.dateEmbauche)}</b></div>
-      <div>Ancienneté : <b>${anciennete(e.dateEmbauche)}</b></div>
+      <div>Ancienneté : <b>${anciennete(e.dateEmbauche)}</b> <span style="color:var(--ink-soft);font-size:11.5px;">(${ancienneteJours(e.dateEmbauche)} jours)</span></div>
       <div>Repos : ${restBadgeHtml(e.reposSlot)}</div>
       <div>Statut : ${e.statut==='Actif'?'<span class="pill pill-ok">Actif</span>':'<span class="pill pill-neutral">Inactif</span>'}</div>
       <div>Performance moyenne : <b class="mono">${perf}/100</b> <span style="color:var(--ink-soft);font-size:11.5px;">(${evals.length} évaluation${evals.length>1?'s':''})</span></div>
-      ${admin?`<div style="border-top:1px solid var(--line-soft);padding-top:10px;">Salaire mensuel : <b class="mono" style="font-size:16px;">${fcfa(e.salaire)}</b></div>`:''}
+      ${admin?`<div style="border-top:1px solid var(--line-soft);padding-top:10px;">Salaire mensuel : <b class="mono" style="font-size:16px;">${fcfa(e.salaire)}</b></div>
+      <div>Cycle de paie : ${paymentStatusBadge(e)} <span style="color:var(--ink-soft);font-size:11px;">depuis le ${fmtDate(cycleStartDate(e))}</span></div>`:''}
       <div class="form-actions" style="justify-content:flex-start;">
         <button class="btn btn-soft btn-sm" onclick="printEmployeeCard('${e.id}')">🪪 Imprimer la carte membre</button>
         <button class="btn btn-soft btn-sm" onclick="openEvaluationForm('${e.id}')">📝 Nouvelle évaluation</button>
@@ -2712,7 +2754,36 @@ function anciennete(dateStr){
   const y = Math.floor(d/365); const m = Math.floor((d%365)/30);
   return y + ' an(s)' + (m? ' ' + m + ' mois' : '');
 }
-function ancienneteAnnees(dateStr){ return daysAgo(dateStr) / 365; }
+function ancienneteJours(dateStr){ return daysAgo(dateStr); }
+
+/* ---------------- cycle de paie : 30 jours travaillés pour un paiement complet ---------------- */
+const CYCLE_PAIE_JOURS = 30;
+function lastPaymentDate(employeeId){
+  const p = employeePayments(employeeId)[0]; // déjà trié du plus récent au plus ancien
+  return p ? p.date : null;
+}
+function cycleStartDate(employee){
+  const last = lastPaymentDate(employee.id);
+  if(!last) return employee.dateEmbauche;
+  const d = parseDate(last); d.setDate(d.getDate()+1);
+  return d.toISOString().slice(0,10);
+}
+function joursDepuisCycle(employee){
+  return daysAgo(cycleStartDate(employee));
+}
+function isDueForPayment(employee){
+  return joursDepuisCycle(employee) >= CYCLE_PAIE_JOURS;
+}
+function paymentStatusBadge(employee){
+  const jours = joursDepuisCycle(employee);
+  if(employee.statut==='Inactif'){
+    return `<span class="pill pill-warn">Départ — ${jours}j dus</span>`;
+  }
+  if(jours >= CYCLE_PAIE_JOURS){
+    return `<span class="pill pill-warn">✅ À payer (${jours}j)</span>`;
+  }
+  return `<span class="pill pill-neutral">⏳ Dans ${CYCLE_PAIE_JOURS-jours}j (${jours}/${CYCLE_PAIE_JOURS}j)</span>`;
+}
 
 /* ========================================================
    REPOS ROTATIF — 7 groupes de 7 jours (A→G), cycle de 49 jours
@@ -2825,7 +2896,7 @@ function employeeCoefficient(e){
   const respo = Number(e.niveauResponsabilite)||1;              // 1–5, reflète le poste et le niveau de responsabilité
   const experience = Math.min(Number(e.experienceAnnees)||0, 10)/10*5; // plafonné à 10 ans, ramené sur 5
   const competences = Number(e.competences)||1;                 // 1–5
-  const anciennete5 = Math.min(ancienneteAnnees(e.dateEmbauche), 10)/10*5; // plafonné à 10 ans, ramené sur 5
+  const anciennete5 = Math.min(ancienneteJours(e.dateEmbauche), 3650)/3650*5; // ancienneté en jours, plafonnée à 3650 j (10 ans), ramenée sur 5
   const performance5 = employeePerformance(e.id)/100*5;         // 0–100 → 0–5
   return respo*0.30 + experience*0.20 + competences*0.20 + anciennete5*0.15 + performance5*0.15;
 }
@@ -2849,11 +2920,13 @@ function openSalaryCalcModal(){
       </p>
       <div class="table-wrap" style="margin-top:12px;">
         <table class="data-table">
-          <thead><tr><th>Employé</th><th>Poste</th><th>Part</th><th>Salaire suggéré</th><th>Salaire actuel</th><th></th></tr></thead>
+          <thead><tr><th>Employé</th><th>Poste</th><th>Ancienneté</th><th>Cycle de paie</th><th>Part</th><th>Salaire suggéré</th><th>Salaire actuel</th><th></th></tr></thead>
           <tbody>
             ${rows.map(r=>`<tr>
               <td><b>${escapeHtml(r.employee.nom)}</b></td>
               <td>${escapeHtml(r.employee.poste)}</td>
+              <td class="num">${ancienneteJours(r.employee.dateEmbauche)} j</td>
+              <td>${paymentStatusBadge(r.employee)}</td>
               <td class="num">${Math.round(r.part*1000)/10}%</td>
               <td class="num"><b>${fcfa(r.suggere)}</b></td>
               <td class="num">${fcfa(r.employee.salaire)}</td>
@@ -2872,6 +2945,243 @@ function applySuggestedSalary(employeeId, montant){
       if(e){ e.salaire = montant; persist(); toast('Salaire mis à jour'); closeModal(); if(document.getElementById('page-employes').classList.contains('active')) renderEmployes(); }
     }
   });
+}
+
+/* ========================================================
+   ÉQUIPES & PLANNING DE ROTATION — composition, performance collective, rotation hebdomadaire
+   ======================================================== */
+const JOURS_SEMAINE = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+const SHIFT_TIMES = { matin:'05h00', midi:'11h00', soir:'18h00' };
+
+function emptySchedule(){
+  const sched = {};
+  JOURS_SEMAINE.forEach(j=>{ sched[j] = { matin: [], midi: [] }; });
+  return sched;
+}
+function teamPerformance(team){
+  const ids = team.memberIds||[];
+  if(!ids.length) return null;
+  const scores = ids.map(id=>employeePerformance(id));
+  return Math.round((scores.reduce((s,v)=>s+v,0)/scores.length)*10)/10;
+}
+function performancePill(score){
+  if(score===null) return '<span class="pill pill-neutral">—</span>';
+  const cls = score>=80 ? 'pill-ok' : score>=60 ? 'pill-gold' : 'pill-warn';
+  return `<span class="pill ${cls}">${score}/100</span>`;
+}
+
+function renderEquipes(){
+  const admin = isAdmin();
+  $('#teamsGrid').innerHTML = state.teams.length ? state.teams.map(t=>{
+    const leader = state.employees.find(e=>e.id===t.leaderId);
+    const perf = teamPerformance(t);
+    return `<div class="cat-card" style="cursor:pointer;flex-wrap:wrap;" onclick="viewTeam('${t.id}')">
+      <div class="cat-dot" style="background:var(--teal-800);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-display);font-weight:600;">🧑‍🤝‍🧑</div>
+      <div class="meta"><b>${escapeHtml(t.nom)}</b><span>${leader?'👑 '+escapeHtml(leader.nom)+' • ':''}${(t.memberIds||[]).length} membre(s)</span></div>
+      <div class="cc-actions">${performancePill(perf)}</div>
+    </div>`;
+  }).join('') : `<div class="empty-state"><div class="em">🧑‍🤝‍🧑</div><h4>Aucune équipe créée</h4>${admin?'<p style="font-size:12.5px;">Cliquez sur « Nouvelle équipe » pour affecter des employés à un groupe et définir leur planning.</p>':''}</div>`;
+}
+
+function openTeamForm(id){
+  const item = id ? state.teams.find(t=>t.id===id) : null;
+  const memberIds = item ? (item.memberIds||[]) : [];
+  openModal({
+    title: item ? "Modifier l'équipe" : 'Nouvelle équipe',
+    bodyHtml:`
+      <form id="teamForm">
+        <div class="field full" style="margin-bottom:12px;"><label>Nom de l'équipe</label><input required name="nom" value="${item?escapeHtml(item.nom):''}" placeholder="Ex : Équipe Service"></div>
+        <div class="field full" style="margin-bottom:12px;">
+          <label>Membres</label>
+          <div style="display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:10px;">
+            ${state.employees.map(e=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+              <input type="checkbox" name="member" value="${e.id}" ${memberIds.includes(e.id)?'checked':''}> ${escapeHtml(e.nom)} <span style="color:var(--ink-soft);font-size:11.5px;">(${escapeHtml(e.poste)})</span>
+            </label>`).join('') || '<span style="font-size:12px;color:var(--ink-soft);">Aucun employé disponible — créez-en d\'abord.</span>'}
+          </div>
+        </div>
+        <div class="field full"><label>Chef d'équipe (leader)</label>
+          <select name="leaderId"><option value="">— Aucun —</option>${state.employees.filter(e=>memberIds.includes(e.id)).map(e=>`<option value="${e.id}" ${item&&item.leaderId===e.id?'selected':''}>${escapeHtml(e.nom)}</option>`).join('')}</select>
+          <span class="hint">La liste se met à jour après avoir cliqué sur des membres et réenregistré si besoin.</span>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">${item?'Enregistrer':"Créer l'équipe"}</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      // Recalcule dynamiquement la liste des leaders possibles selon les membres cochés
+      const leaderSelect = overlay.querySelector('[name="leaderId"]');
+      overlay.querySelectorAll('input[name="member"]').forEach(cb=>{
+        cb.addEventListener('change', ()=>{
+          const checked = Array.from(overlay.querySelectorAll('input[name="member"]:checked')).map(c=>c.value);
+          const current = leaderSelect.value;
+          leaderSelect.innerHTML = '<option value="">— Aucun —</option>' + state.employees.filter(e=>checked.includes(e.id)).map(e=>`<option value="${e.id}">${escapeHtml(e.nom)}</option>`).join('');
+          if(checked.includes(current)) leaderSelect.value = current;
+        });
+      });
+      overlay.querySelector('#teamForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const f = new FormData(e.target);
+        const members = f.getAll('member');
+        const payload = { nom: f.get('nom').trim(), memberIds: members, leaderId: f.get('leaderId') || null };
+        if(item){ Object.assign(item, payload); toast('Équipe modifiée'); }
+        else { state.teams.push({id:uid('TEAM'), ...payload, schedule: emptySchedule()}); toast('Équipe créée'); }
+        persist(); closeModal(); renderEquipes();
+      });
+    }
+  });
+}
+function deleteTeam(id){
+  const t = state.teams.find(t=>t.id===id);
+  passwordConfirmModal({ message:`Supprimer l'équipe « ${escapeHtml(t.nom)} » ? Le planning associé sera perdu. Cette action est irréversible.`,
+    onConfirm(){ state.teams = state.teams.filter(x=>x.id!==id); persist(); closeModal(); renderEquipes(); toast('Équipe supprimée'); } });
+}
+
+function viewTeam(id){
+  const t = state.teams.find(t=>t.id===id);
+  if(!t) return;
+  if(!t.schedule) t.schedule = emptySchedule();
+  const admin = isAdmin();
+  const members = (t.memberIds||[]).map(mid=>state.employees.find(e=>e.id===mid)).filter(Boolean);
+  const leader = state.employees.find(e=>e.id===t.leaderId);
+  const perf = teamPerformance(t);
+  const scheduleRows = JOURS_SEMAINE.map(j=>{
+    const jour = t.schedule[j] || {matin:[],midi:[]};
+    const nomsOf = ids => ids.map(mid=>{ const e=state.employees.find(x=>x.id===mid); return e?e.nom.split(' ')[0]:'?'; }).join(' + ') || '—';
+    return `<tr style="border-top:1px solid var(--line-soft);">
+      <td style="padding:7px 8px;font-weight:700;font-size:12.5px;">${j}</td>
+      <td style="padding:7px 8px;font-size:12px;">${nomsOf(jour.matin)}</td>
+      <td style="padding:7px 8px;font-size:12px;">${nomsOf(jour.midi)}</td>
+      <td style="padding:7px 8px;font-size:12px;color:var(--ink-soft);">${nomsOf(jour.matin)}</td>
+      <td style="padding:7px 8px;font-size:12px;">Toute l'équipe</td>
+    </tr>`;
+  }).join('');
+  openModal({
+    title: t.nom,
+    bodyHtml:`
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13.5px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>${leader?`👑 Chef d'équipe : <b>${escapeHtml(leader.nom)}</b>`:'<span style="color:var(--ink-soft);">Aucun chef désigné</span>'}</div>
+          <div>Performance collective : ${performancePill(perf)}</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${members.map(m=>`<div style="display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:20px;padding:4px 10px 4px 4px;font-size:12px;">
+            ${employeeAvatarHtml(m,24)} ${escapeHtml(m.nom)} ${performancePill(employeePerformance(m.id))}
+          </div>`).join('') || '<span style="color:var(--ink-soft);font-size:12px;">Aucun membre affecté.</span>'}
+        </div>
+        <div style="border-top:1px solid var(--line-soft);padding-top:10px;margin-top:4px;">
+          <b style="font-size:12px;">Planning hebdomadaire de rotation</b>
+          <div style="font-size:11px;color:var(--ink-soft);margin:4px 0 8px;">Petit-déjeuner ${SHIFT_TIMES.matin} • Déjeuner ${SHIFT_TIMES.midi} • Dîner ${SHIFT_TIMES.soir} — le repos prioritaire revient à l'équipe du petit-déjeuner.</div>
+          <div class="table-wrap"><table class="data-table" style="font-size:12px;">
+            <thead><tr><th>Jour</th><th>Petit-déj.</th><th>Déjeuner</th><th>Repos prioritaire</th><th>Dîner</th></tr></thead>
+            <tbody>${scheduleRows}</tbody>
+          </table></div>
+        </div>
+        <div class="form-actions" style="justify-content:flex-start;">
+          <button class="btn btn-soft btn-sm" onclick="printTeamSchedule('${t.id}')">🖨️ Imprimer le planning</button>
+          ${admin?`<button class="btn btn-soft btn-sm" onclick="openScheduleForm('${t.id}')">🗓️ Modifier le planning</button>
+          <button class="btn btn-ghost btn-sm" onclick="openTeamForm('${t.id}')">✏️ Modifier l'équipe</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTeam('${t.id}')">🗑️ Supprimer</button>`:''}
+        </div>
+      </div>`,
+  });
+}
+
+function openScheduleForm(teamId){
+  const t = state.teams.find(t=>t.id===teamId);
+  if(!t) return;
+  if(!t.schedule) t.schedule = emptySchedule();
+  const members = (t.memberIds||[]).map(mid=>state.employees.find(e=>e.id===mid)).filter(Boolean);
+  if(!members.length){ toast('Ajoutez d\'abord des membres à cette équipe', 'error'); return; }
+  openModal({
+    title: 'Planning — ' + t.nom,
+    bodyHtml:`
+      <p style="font-size:11.5px;color:var(--ink-soft);margin-bottom:10px;">
+        Pour chaque jour, cochez qui assure le petit-déjeuner (${SHIFT_TIMES.matin}) et qui assure le déjeuner (${SHIFT_TIMES.midi}).
+        Le repos prioritaire suit automatiquement l'équipe du petit-déjeuner, et tout le monde est présent au dîner (${SHIFT_TIMES.soir}).
+      </p>
+      <div style="display:flex;flex-direction:column;gap:14px;max-height:420px;overflow-y:auto;">
+        ${JOURS_SEMAINE.map(j=>{
+          const jour = t.schedule[j] || {matin:[],midi:[]};
+          return `<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;" data-day-block="${j}">
+            <b style="font-size:12.5px;">${j}</b>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;">
+              <div>
+                <div style="font-size:10.5px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:3px;">🌅 Petit-déjeuner</div>
+                ${members.map(m=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" data-role="matin" value="${m.id}" ${jour.matin.includes(m.id)?'checked':''}> ${escapeHtml(m.nom.split(' ')[0])}</label>`).join('')}
+              </div>
+              <div>
+                <div style="font-size:10.5px;text-transform:uppercase;color:var(--ink-soft);margin-bottom:3px;">🌞 Déjeuner</div>
+                ${members.map(m=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;"><input type="checkbox" data-role="midi" value="${m.id}" ${jour.midi.includes(m.id)?'checked':''}> ${escapeHtml(m.nom.split(' ')[0])}</label>`).join('')}
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+        <button type="button" class="btn btn-primary" id="btnSaveSchedule">Enregistrer le planning</button>
+      </div>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#btnSaveSchedule').addEventListener('click', ()=>{
+        const newSchedule = {};
+        JOURS_SEMAINE.forEach(j=>{
+          const block = overlay.querySelector(`[data-day-block="${j}"]`);
+          newSchedule[j] = {
+            matin: Array.from(block.querySelectorAll('[data-role="matin"]:checked')).map(c=>c.value),
+            midi: Array.from(block.querySelectorAll('[data-role="midi"]:checked')).map(c=>c.value),
+          };
+        });
+        t.schedule = newSchedule;
+        persist(); closeModal(); toast('Planning enregistré'); viewTeam(teamId);
+      });
+    }
+  });
+}
+
+function printTeamSchedule(teamId){
+  const t = state.teams.find(t=>t.id===teamId);
+  if(!t) return;
+  const leader = state.employees.find(e=>e.id===t.leaderId);
+  const members = (t.memberIds||[]).map(mid=>state.employees.find(e=>e.id===mid)).filter(Boolean);
+  const nomsOf = ids => ids.map(mid=>{ const e=state.employees.find(x=>x.id===mid); return e?e.nom:'?'; }).join(' + ') || '—';
+  const rows = JOURS_SEMAINE.map(j=>{
+    const jour = (t.schedule && t.schedule[j]) || {matin:[],midi:[]};
+    return `<tr style="border-top:1px solid #EEF2EE;">
+      <td style="padding:7px 6px;font-size:12px;font-weight:700;">${j}</td>
+      <td style="padding:7px 6px;font-size:11.5px;">${nomsOf(jour.matin)}</td>
+      <td style="padding:7px 6px;font-size:11.5px;">${nomsOf(jour.midi)}</td>
+      <td style="padding:7px 6px;font-size:11.5px;color:#5C6E67;">${nomsOf(jour.matin)}</td>
+      <td style="padding:7px 6px;font-size:11.5px;">Toute l'équipe</td>
+    </tr>`;
+  }).join('');
+  const body = `
+  <div style="width:520px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
+    ${printBrandHeader('Planning de rotation hebdomadaire', 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
+    <div style="padding:18px 20px;background:#fff;">
+      <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:700;">${escapeHtml(t.nom)}</div>
+      <div style="font-size:12px;color:#5C6E67;margin-top:2px;">Équipe : ${escapeHtml(members.map(m=>m.nom).join(', ')||'—')}${leader?` (Leader : ${escapeHtml(leader.nom)})`:''}</div>
+      <table style="width:100%;border-collapse:collapse;margin-top:14px;">
+        <thead><tr style="background:#F3F6F3;">
+          <th style="text-align:left;padding:6px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Jour</th>
+          <th style="text-align:left;padding:6px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Petit-déj.</th>
+          <th style="text-align:left;padding:6px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Déjeuner</th>
+          <th style="text-align:left;padding:6px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Repos prio.</th>
+          <th style="text-align:left;padding:6px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Dîner</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:16px;font-size:11px;color:#5C6E67;line-height:1.6;border-top:1px dashed #E2E8E3;padding-top:10px;">
+        <b>Horaires de début :</b> Petit-déjeuner ${SHIFT_TIMES.matin} • Déjeuner ${SHIFT_TIMES.midi} • Dîner ${SHIFT_TIMES.soir}<br>
+        <b>Principe :</b> les 2 personnes du petit-déjeuner commencent à ${SHIFT_TIMES.matin} et bénéficient du repos prioritaire avant le dîner.
+        Les autres commencent plus tard et assurent le déjeuner. À ${SHIFT_TIMES.soir}, toute l'équipe est présente pour le dîner.
+      </div>
+    </div>
+    ${printBrandFooter()}
+  </div>`;
+  openPrintWindow('Planning — ' + t.nom, body);
 }
 
 /* ========================================================
@@ -3256,13 +3566,23 @@ function openPaymentForm(employeeId){
   const e = state.employees.find(e=>e.id===employeeId);
   if(!e) return;
   const moisActuel = new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const jours = joursDepuisCycle(e);
+  const montantProrata = Math.round((Number(e.salaire)||0) / CYCLE_PAIE_JOURS * jours);
+  const estAbandon = e.statut === 'Inactif';
+  const estComplet = jours >= CYCLE_PAIE_JOURS;
+  const noteCycle = estAbandon
+    ? `⚠️ Employé inactif : ${jours} jour(s) travaillé(s) depuis le ${fmtDate(cycleStartDate(e))} — paiement au prorata proposé (départ avant le cycle complet de ${CYCLE_PAIE_JOURS} jours).`
+    : estComplet
+      ? `✅ ${jours} jour(s) travaillé(s) depuis le dernier paiement — cycle de ${CYCLE_PAIE_JOURS} jours atteint, paiement complet proposé.`
+      : `⏳ Seulement ${jours} jour(s) travaillé(s) sur ${CYCLE_PAIE_JOURS} requis pour un paiement complet — vous pouvez quand même enregistrer une avance au prorata si besoin.`;
   openModal({
     title: 'Payer le salaire — ' + e.nom,
     bodyHtml:`
+      <p style="font-size:12px;color:${estAbandon||!estComplet?'var(--bissap-dark)':'var(--leaf-dark)'};background:${estAbandon||!estComplet?'var(--bissap-tint)':'var(--leaf-tint)'};padding:8px 10px;border-radius:8px;line-height:1.5;">${noteCycle}</p>
       <form id="paymentForm">
         <div class="form-grid">
           <div class="field full"><label>Période</label><input required name="periode" value="${moisActuel.charAt(0).toUpperCase()+moisActuel.slice(1)}" placeholder="Ex : Septembre 2026"></div>
-          <div class="field"><label>Montant payé (FCFA)</label><input required type="number" min="0" name="montant" value="${e.salaire}"></div>
+          <div class="field"><label>Montant payé (FCFA) <span class="hint">(${jours}j au prorata : ${fmt(montantProrata)})</span></label><input required type="number" min="0" name="montant" value="${estComplet && !estAbandon ? e.salaire : montantProrata}"></div>
           <div class="field"><label>Date de paiement</label><input required type="date" name="date" value="${todayISO()}"></div>
           <div class="field full"><label>Mode de paiement</label>
             <select name="mode"><option>Espèces</option><option>Mobile Money</option><option>Virement bancaire</option><option>Chèque</option></select>
@@ -3828,6 +4148,9 @@ async function init(){
   $('#subsStatutFilter').addEventListener('change', (e)=>{ subsFilter.statut=e.target.value; renderAbonnements(); });
   $('#btnWipeSubs').addEventListener('click', ()=>wipeModule('subscriptions','Abonnements'));
   $('#btnPrintMenuDuJour').addEventListener('click', printMenuDuJour);
+
+  // Équipes
+  $('#btnAddTeam').addEventListener('click', ()=>openTeamForm());
 
   // Catégories
   $('#btnAddCategory').addEventListener('click', ()=>openCategoryForm());
