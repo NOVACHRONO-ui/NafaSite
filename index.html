@@ -602,7 +602,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
           </div>
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>Date</th><th>Catégorie</th><th>Description</th><th>Montant</th><th></th></tr></thead>
+              <thead><tr><th>Date</th><th>Catégorie</th><th>Description</th><th>Type</th><th>Montant</th><th></th></tr></thead>
               <tbody id="depensesTbody"></tbody>
             </table>
           </div>
@@ -1122,14 +1122,15 @@ function seedState(){
       {id:uid('ACH'), date:'2026-08-18', nom:'Bissap (fleurs séchées)', categorie:'Boisson', quantite:8, unite:'kg', prixUnitaire:1800, fournisseur:'Marché Sandaga', total:14400},
     ],
     expenses: [
-      {id:uid('DEP'), date:'2026-08-01', categorie:'Loyer', description:'Loyer local commercial - Août', montant:150000},
-      {id:uid('DEP'), date:'2026-08-05', categorie:'Électricité', description:'Facture SENELEC', montant:45000},
-      {id:uid('DEP'), date:'2026-08-05', categorie:'Eau', description:'Facture SDE', montant:18000},
-      {id:uid('DEP'), date:'2026-08-10', categorie:'Gaz', description:'Recharge bouteilles de gaz cuisine', montant:25000},
-      {id:uid('DEP'), date:'2026-08-15', categorie:'Transport', description:'Carburant livraisons', montant:20000},
-      {id:uid('DEP'), date:'2026-08-20', categorie:'Maintenance', description:'Réparation four', montant:15000},
-      {id:uid('DEP'), date:'2026-08-24', categorie:'Communication', description:'Forfait internet / téléphone', montant:12000},
-      {id:uid('DEP'), date:'2026-08-26', categorie:'Autre', description:'Décoration terrasse', montant:8000},
+      {id:uid('DEP'), date:'2026-08-01', categorie:'Loyer', description:'Loyer local commercial - Août', montant:150000, type:'Exploitation'},
+      {id:uid('DEP'), date:'2026-08-05', categorie:'Électricité', description:'Facture SENELEC', montant:45000, type:'Exploitation'},
+      {id:uid('DEP'), date:'2026-08-05', categorie:'Eau', description:'Facture SDE', montant:18000, type:'Exploitation'},
+      {id:uid('DEP'), date:'2026-08-10', categorie:'Gaz', description:'Recharge bouteilles de gaz cuisine', montant:25000, type:'Exploitation'},
+      {id:uid('DEP'), date:'2026-08-15', categorie:'Transport', description:'Carburant livraisons', montant:20000, type:'Exploitation'},
+      {id:uid('DEP'), date:'2026-08-20', categorie:'Maintenance', description:'Réparation four', montant:15000, type:'Exploitation'},
+      {id:uid('DEP'), date:'2026-08-24', categorie:'Communication', description:'Forfait internet / téléphone', montant:12000, type:'Exploitation'},
+      {id:uid('DEP'), date:'2026-08-26', categorie:'Autre', description:'Décoration terrasse', montant:8000, type:'Investissement'},
+      {id:uid('DEP'), date:'2026-08-02', categorie:'Équipement', description:'Achat mobilier et équipement de cuisine (démarrage)', montant:600000, type:'Investissement'},
     ],
     sales: [
       {id:uid('V'), date:'2026-08-25', commande:'C001', table:3, produitId:'P001', produitNom:'Thiéboudienne rouge', quantite:2, prixUnitaire:2500, total:5000, paiement:'Espèces'},
@@ -1223,7 +1224,10 @@ function ensureDataIntegrity(){
   });
   // Anciens achats/dépenses enregistrés avant l'ajout du mode de paiement (nécessaire pour la trésorerie)
   (state.purchases||[]).forEach(p=>{ if(!p.mode){ p.mode = 'Espèces'; changed = true; } });
-  (state.expenses||[]).forEach(e=>{ if(!e.mode){ e.mode = 'Espèces'; changed = true; } });
+  (state.expenses||[]).forEach(e=>{
+    if(!e.mode){ e.mode = 'Espèces'; changed = true; }
+    if(!e.type){ e.type = 'Exploitation'; changed = true; } // par défaut : dépense récurrente, pas un investissement de démarrage
+  });
   if(state.settings && !state.settings.congeCycleStart){ state.settings.congeCycleStart = '2026-08-01'; changed = true; }
   if(changed) persist(true);
 }
@@ -1265,8 +1269,14 @@ function computeTotals(){
   const salesTotal = state.sales.reduce((a,s)=>a+s.total,0);
   const purchasesTotal = state.purchases.reduce((a,p)=>a+p.total,0);
   const expensesTotal = state.expenses.reduce((a,e)=>a+e.montant,0);
+  const expensesExploitation = state.expenses.filter(e=>e.type!=='Investissement').reduce((a,e)=>a+e.montant,0);
+  const expensesInvestissement = state.expenses.filter(e=>e.type==='Investissement').reduce((a,e)=>a+e.montant,0);
   const payroll = activeEmployees().reduce((a,e)=>a+Number(e.salaire||0),0);
-  const profit = salesTotal - purchasesTotal - expensesTotal - payroll;
+  // Marge d'exploitation : santé du fonctionnement quotidien, hors coûts exceptionnels de démarrage
+  const margeExploitation = salesTotal - purchasesTotal - expensesExploitation - payroll;
+  // Résultat après investissements de lancement : impact réel des dépenses exceptionnelles de démarrage
+  const resultatApresInvestissements = margeExploitation - expensesInvestissement;
+  const profit = resultatApresInvestissements; // conservé pour compatibilité avec l'existant (résultat global)
   const today = todayISO();
   const caJour = state.sales.filter(s=>s.date===today).reduce((a,s)=>a+s.total,0);
   const caSemaine = state.sales.filter(s=>daysAgo(s.date)>=0 && daysAgo(s.date)<7).reduce((a,s)=>a+s.total,0);
@@ -1276,7 +1286,7 @@ function computeTotals(){
   const orders = distinctOrders();
   const panierMoyen = orders ? salesTotal/orders : 0;
   const alerts = state.stock.filter(s=>Number(s.actuel) < Number(s.min)).length;
-  return {salesTotal,purchasesTotal,expensesTotal,payroll,profit,caJour,caSemaine,caMois,qtyVendue,orders,panierMoyen,alerts};
+  return {salesTotal,purchasesTotal,expensesTotal,expensesExploitation,expensesInvestissement,payroll,profit,margeExploitation,resultatApresInvestissements,caJour,caSemaine,caMois,qtyVendue,orders,panierMoyen,alerts};
 }
 
 /* ---------------- toasts ---------------- */
@@ -1452,7 +1462,8 @@ function renderDashboard(){
     {label:"CA du jour", value:fcfa(t.caJour), icon:'☀️', accent:'--millet', tint:'--millet-tint'},
     {label:"CA de la semaine", value:fcfa(t.caSemaine), icon:'📅', accent:'--sky', tint:'--sky-tint'},
     {label:"CA du mois", value:fcfa(t.caMois), icon:'🗓️', accent:'--teal-800', tint:'--line-soft'},
-    admin && {label:"Bénéfice estimé", value:fcfa(t.profit), neg:t.profit<0, icon:'📈', accent:'--bissap', tint:'--bissap-tint'},
+    admin && {label:"Marge d'exploitation", value:fcfa(t.margeExploitation), neg:t.margeExploitation<0, icon:'📈', accent: t.margeExploitation>=0?'--leaf':'--bissap', tint: t.margeExploitation>=0?'--leaf-tint':'--bissap-tint', note:"Fonctionnement quotidien, hors démarrage"},
+    admin && {label:"Résultat après investissements", value:fcfa(t.resultatApresInvestissements), neg:t.resultatApresInvestissements<0, icon:'🏗️', accent:'--bissap', tint:'--bissap-tint', note:"Inclut les coûts de lancement"},
     {label:"Produits vendus", value:fmt(t.qtyVendue)+" unités", icon:'🍽️', accent:'--leaf', tint:'--leaf-tint'},
     admin && {label:"Total achats", value:fcfa(t.purchasesTotal), icon:'🛒', accent:'--teal-800', tint:'--line-soft'},
     admin && {label:"Total dépenses", value:fcfa(t.expensesTotal), icon:'💰', accent:'--bissap', tint:'--bissap-tint'},
@@ -1596,11 +1607,15 @@ function printDailyReport(date){
 
   const totalVentes = ventes.reduce((s,v)=>s+v.total,0);
   const totalAchats = achats.reduce((s,v)=>s+v.total,0);
-  const totalDepenses = depenses.reduce((s,v)=>s+v.montant,0);
+  const depensesExploitationJour = depenses.filter(e=>e.type!=='Investissement');
+  const depensesInvestissementJour = depenses.filter(e=>e.type==='Investissement');
+  const totalDepensesExploitation = depensesExploitationJour.reduce((s,v)=>s+v.montant,0);
+  const totalDepensesInvestissement = depensesInvestissementJour.reduce((s,v)=>s+v.montant,0);
   const totalSalaires = salaires.reduce((s,v)=>s+v.montant,0);
   const totalFournPaiements = fournisseurOps.filter(t=>t.type==='paiement').reduce((s,t)=>s+t.montant,0);
   const totalFournPrises = fournisseurOps.filter(t=>t.type==='prise').reduce((s,t)=>s+t.montant,0);
-  const beneficeJour = totalVentes - totalAchats - totalDepenses - totalSalaires - totalFournPaiements;
+  const margeExploitationJour = totalVentes - totalAchats - totalDepensesExploitation - totalSalaires - totalFournPaiements;
+  const resultatJour = margeExploitationJour - totalDepensesInvestissement;
   const byPay = {};
   ventes.forEach(v=>{ byPay[v.paiement] = (byPay[v.paiement]||0) + v.total; });
 
@@ -1631,11 +1646,15 @@ function printDailyReport(date){
   const kpiCards = [
     {label:'Ventes', value:fcfa(totalVentes), color:'#206B48', bg:'#E1F3EA'},
     {label:'Achats', value:fcfa(totalAchats), color:'#B67A1B', bg:'#FBEEDA'},
-    {label:'Dépenses', value:fcfa(totalDepenses), color:'#8E1C2B', bg:'#FBE6E9'},
+    {label:'Dép. exploitation', value:fcfa(totalDepensesExploitation), color:'#8E1C2B', bg:'#FBE6E9'},
   ];
   if(admin){
     kpiCards.push({label:'Salaires versés', value:fcfa(totalSalaires), color:'#8E1C2B', bg:'#FBE6E9'});
-    kpiCards.push({label:'Bénéfice du jour', value:fcfa(beneficeJour), color: beneficeJour>=0?'#206B48':'#8E1C2B', bg: beneficeJour>=0?'#E1F3EA':'#FBE6E9'});
+    kpiCards.push({label:"Marge d'exploitation", value:fcfa(margeExploitationJour), color: margeExploitationJour>=0?'#206B48':'#8E1C2B', bg: margeExploitationJour>=0?'#E1F3EA':'#FBE6E9'});
+    if(totalDepensesInvestissement){
+      kpiCards.push({label:'Investissements démarrage', value:fcfa(totalDepensesInvestissement), color:'#B67A1B', bg:'#FBEEDA'});
+      kpiCards.push({label:'Résultat après investissements', value:fcfa(resultatJour), color: resultatJour>=0?'#206B48':'#8E1C2B', bg: resultatJour>=0?'#E1F3EA':'#FBE6E9'});
+    }
   }
   const kpiHtml = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;">
     ${kpiCards.map(k=>`<div style="background:${k.bg};border-radius:10px;padding:8px 10px;">
@@ -1657,7 +1676,7 @@ function printDailyReport(date){
 
   const ventesRows = ventes.map(v=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(v.produitNom)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;">${fmt(v.quantite)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(v.paiement)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(v.total)}</td></tr>`).join('');
   const achatsRows = achats.map(p=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(p.nom)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(p.fournisseur)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;">${fmt(p.quantite)} ${escapeHtml(p.unite)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(p.total)}</td></tr>`).join('');
-  const depensesRows = depenses.map(e=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(e.categorie)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(e.description)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(e.montant)}</td></tr>`).join('');
+  const depensesRows = depenses.map(e=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${escapeHtml(e.categorie)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(e.description)}</td><td style="padding:4px 5px;font-size:10.5px;color:${e.type==='Investissement'?'#B67A1B':'#5C6E67'};">${e.type==='Investissement'?'🏗️ Investiss.':'🔁 Exploit.'}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(e.montant)}</td></tr>`).join('');
   const mouvRows = mouvements.map(m=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:12px;">${m.type==='entree'?'⬆️':'⬇️'} ${escapeHtml(m.categorie)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(m.description)}</td><td style="padding:4px 5px;font-size:11px;">${escapeHtml(m.mode)}</td><td style="padding:4px 5px;font-size:12px;text-align:right;font-weight:700;">${m.type==='entree'?'+':'-'}${fmt(m.montant)}</td></tr>`).join('');
   const fournRows = fournisseurOps.map(t=>{
     const sup = state.suppliers.find(s=>s.id===t.supplierId);
@@ -1683,7 +1702,7 @@ function printDailyReport(date){
       ${miniBarChart('📉 Produits les moins vendus (qté)', flopProduits, '#DD9A2B')}
       ${miniTable('Ventes ('+ventes.length+')', ventesRows, [{label:'Produit'},{label:'Qté',right:true},{label:'Paiement'},{label:'Total',right:true}])}
       ${miniTable('Achats ('+achats.length+')', achatsRows, [{label:'Produit'},{label:'Fournisseur'},{label:'Qté',right:true},{label:'Total',right:true}])}
-      ${miniTable('Dépenses ('+depenses.length+')', depensesRows, [{label:'Catégorie'},{label:'Description'},{label:'Montant',right:true}])}
+      ${miniTable('Dépenses ('+depenses.length+')', depensesRows, [{label:'Catégorie'},{label:'Description'},{label:'Type'},{label:'Montant',right:true}])}
       ${miniTable('Mouvements de caisse manuels ('+mouvements.length+')', mouvRows, [{label:'Catégorie'},{label:'Description'},{label:'Mode'},{label:'Montant',right:true}])}
       ${miniTable('Opérations fournisseurs ('+fournisseurOps.length+')', fournRows, [{label:'Fournisseur'},{label:'Type'},{label:'Description'},{label:'Montant',right:true}])}
       ${miniTable('Nouveaux abonnés ('+nouveauxAbonnes.length+')', abonnesRows, [{label:'Nom'},{label:'Abonnement'},{label:'Montant',right:true}])}
@@ -1872,12 +1891,13 @@ function renderDepensesTable(){
       <td>${fmtDate(e.date)}</td>
       <td><span class="pill pill-neutral">${escapeHtml(e.categorie)}</span></td>
       <td>${escapeHtml(e.description)}</td>
+      <td>${e.type==='Investissement'?'<span class="pill pill-gold">🏗️ Investissement</span>':'<span class="pill pill-neutral">🔁 Exploitation</span>'}</td>
       <td class="num"><b>${fmt(e.montant)}</b></td>
       <td class="actions"><div class="row-actions">
         <button class="icon-btn" title="Modifier" onclick="openExpenseForm('${e.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteExpense('${e.id}')">🗑️</button>
       </div></td>
-    </tr>`).join('') : `<tr class="empty-row"><td colspan="5">Aucune dépense trouvée.</td></tr>`;
+    </tr>`).join('') : `<tr class="empty-row"><td colspan="6">Aucune dépense trouvée.</td></tr>`;
 }
 
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}); }
@@ -1995,8 +2015,14 @@ function openExpenseForm(id){
           <div class="field"><label>Montant (FCFA)</label><input required type="number" min="0" name="montant" value="${item?item.montant:''}"></div>
           <div class="field full"><label>Description</label><input required name="description" value="${item?escapeHtml(item.description):''}"></div>
           <div class="field"><label>Date</label><input required type="date" name="date" value="${item?item.date:todayISO()}"></div>
-          <div class="field full"><label>Mode de paiement</label>
+          <div class="field"><label>Mode de paiement</label>
             <select name="mode">${['Espèces','Mobile Money','Carte','Banque'].map(m=>`<option ${item&&item.mode===m?'selected':''}>${m}</option>`).join('')}</select>
+          </div>
+          <div class="field full"><label>Type de dépense <span class="hint">(pour distinguer le fonctionnement quotidien des coûts de lancement)</span></label>
+            <select name="type">
+              <option value="Exploitation" ${!item||item.type==='Exploitation'?'selected':''}>🔁 Exploitation (récurrente : loyer, factures, achats courants…)</option>
+              <option value="Investissement" ${item&&item.type==='Investissement'?'selected':''}>🏗️ Investissement de démarrage (équipement, travaux, décoration…)</option>
+            </select>
           </div>
         </div>
         <div class="form-actions">
@@ -2009,7 +2035,7 @@ function openExpenseForm(id){
       overlay.querySelector('#expenseForm').addEventListener('submit',(e)=>{
         e.preventDefault();
         const f = new FormData(e.target);
-        const payload = { categorie:f.get('categorie').trim(), description:f.get('description').trim(), montant:Number(f.get('montant')), date:f.get('date'), mode:f.get('mode') };
+        const payload = { categorie:f.get('categorie').trim(), description:f.get('description').trim(), montant:Number(f.get('montant')), date:f.get('date'), mode:f.get('mode'), type:f.get('type') };
         if(item){ Object.assign(item, payload); toast('Dépense modifiée'); }
         else { state.expenses.push({id:uid('DEP'), ...payload}); toast('Dépense ajoutée'); }
         persist(); closeModal(); renderDepensesTable(); if(document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
@@ -3791,10 +3817,12 @@ function renderRapports(){
   $('#rapportKpis').innerHTML = [
     ['Chiffre d\'affaires total', fcfa(t.salesTotal)],
     ['Coût matières (achats)', fcfa(t.purchasesTotal)],
-    ['Dépenses générales', fcfa(t.expensesTotal)],
+    ['Dépenses d\'exploitation', fcfa(t.expensesExploitation)],
     ['Masse salariale', fcfa(t.payroll)],
-    ['Bénéfice net estimé', fcfa(t.profit)],
-    ['Marge nette', t.salesTotal? Math.round((t.profit/t.salesTotal)*1000)/10 + ' %' : '—'],
+    ['Marge d\'exploitation', fcfa(t.margeExploitation)],
+    ['Marge d\'exploitation (%)', t.salesTotal? Math.round((t.margeExploitation/t.salesTotal)*1000)/10 + ' %' : '—'],
+    ['Investissements de démarrage', fcfa(t.expensesInvestissement)],
+    ['Résultat après investissements', fcfa(t.resultatApresInvestissements)],
   ].map(([l,v])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value" style="margin-top:8px;">${v}</div></div>`).join('');
 
   // Ventes par produit (table classement complet)
@@ -3848,9 +3876,11 @@ function exportRapportGlobalCSV(){
     ['Indicateur','Valeur (FCFA)'],
     ["Chiffre d'affaires total", t.salesTotal],
     ['Total achats', t.purchasesTotal],
-    ['Total dépenses', t.expensesTotal],
+    ["Dépenses d'exploitation", t.expensesExploitation],
     ['Masse salariale', t.payroll],
-    ['Bénéfice net estimé', t.profit],
+    ["Marge d'exploitation", t.margeExploitation],
+    ['Investissements de démarrage', t.expensesInvestissement],
+    ['Résultat après investissements', t.resultatApresInvestissements],
   ];
   downloadCSV(lines.map(l=>l.join(',')).join('\n'), 'rapport_global.csv');
   toast('Rapport global exporté');
