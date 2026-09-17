@@ -1271,6 +1271,7 @@ function catColor(nom){
 function activeEmployees(){ return state.employees.filter(e => e.statut === 'Actif'); }
 function distinctOrders(){ return new Set(state.sales.map(s => s.commande || s.id)).size; }
 function distinctOrdersOn(date){ return new Set(state.sales.filter(s=>s.date===date).map(s => s.commande || s.id)).size; }
+function salesCountOn(date){ return state.sales.filter(s=>s.date===date).length; }
 
 function computeTotals(){
   const salesTotal = state.sales.reduce((a,s)=>a+s.total,0);
@@ -1292,7 +1293,7 @@ function computeTotals(){
   const qtyVendue = state.sales.reduce((a,s)=>a+Number(s.quantite||0),0);
   const orders = distinctOrders();
   const panierMoyen = orders ? salesTotal/orders : 0;
-  const clientsJour = distinctOrdersOn(today);
+  const clientsJour = salesCountOn(today);
   const alerts = state.stock.filter(s=>Number(s.actuel) < Number(s.min)).length;
   return {salesTotal,purchasesTotal,expensesTotal,expensesExploitation,expensesInvestissement,payroll,profit,margeExploitation,resultatApresInvestissements,caJour,caSemaine,caMois,qtyVendue,orders,panierMoyen,clientsJour,alerts};
 }
@@ -1527,7 +1528,7 @@ function renderDashboard(){
   drawChart('chartFrequentation', {
     type:'bar',
     data:{ labels: freqDays.map(d=>d.slice(5).split('-').reverse().join('/')),
-      datasets:[{ label:'Clients estimés', data: freqDays.map(d=>distinctOrdersOn(d)), backgroundColor:'#2C6E9E', borderRadius:6 }] },
+      datasets:[{ label:'Clients estimés', data: freqDays.map(d=>salesCountOn(d)), backgroundColor:'#2C6E9E', borderRadius:6 }] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
       scales:{ y:{beginAtZero:true, ticks:{stepSize:1}, grid:{color:'#EEF2EE'}}, x:{grid:{display:false}} } }
   });
@@ -1664,7 +1665,7 @@ function printDailyReport(date){
     </div>`;
   }
 
-  const clientsJourRapport = distinctOrdersOn(date);
+  const clientsJourRapport = ventes.length;
   const panierMoyenJour = clientsJourRapport ? Math.round(totalVentes/clientsJourRapport) : 0;
 
   const kpiCards = [
