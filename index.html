@@ -534,6 +534,12 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
 
           <div class="panel" data-roles="admin">
             <div class="panel-head">
+              <div><h3>Bénéfices journaliers</h3><div class="desc">7 derniers jours — vert si positif, rouge si négatif</div></div>
+            </div>
+            <div class="panel-body"><div class="chart-wrap"><canvas id="chartBeneficeSemaine"></canvas></div></div>
+          </div>
+          <div class="panel" data-roles="admin">
+            <div class="panel-head">
               <div><h3>Achats vs Ventes</h3><div class="desc">Comparaison mensuelle</div></div>
             </div>
             <div class="panel-body"><div class="chart-wrap"><canvas id="chartAchatsVentes"></canvas></div></div>
@@ -1180,12 +1186,12 @@ function seedState(){
         recipe:[{stockId:'stk-riz', quantite:0.3},{stockId:'stk-poisson', quantite:0.3},{stockId:'stk-huile', quantite:0.03},{stockId:'stk-oignons', quantite:0.05}]},
     ],
     purchases: [
-      {id:uid('ACH'), date:'2026-08-20', nom:'Riz brisé', categorie:'Féculent', quantite:50, unite:'kg', prixUnitaire:500, fournisseur:'Marché Sandaga', total:25000},
-      {id:uid('ACH'), date:'2026-08-22', nom:'Poulet', categorie:'Protéine', quantite:30, unite:'kg', prixUnitaire:2200, fournisseur:'Poissonnerie Rue 10', total:66000},
-      {id:uid('ACH'), date:'2026-08-24', nom:'Huile végétale', categorie:'Condiment', quantite:20, unite:'L', prixUnitaire:950, fournisseur:'Grossiste Touba', total:19000},
-      {id:uid('ACH'), date:'2026-08-25', nom:'Tomate fraîche', categorie:'Légume', quantite:15, unite:'kg', prixUnitaire:450, fournisseur:'Marché Sandaga', total:6750},
-      {id:uid('ACH'), date:'2026-08-21', nom:'Eau minérale 50cl', categorie:'Boisson', quantite:96, unite:'unité', prixUnitaire:150, fournisseur:'Fournisseur Boissons SN', total:14400},
-      {id:uid('ACH'), date:'2026-08-18', nom:'Bissap (fleurs séchées)', categorie:'Boisson', quantite:8, unite:'kg', prixUnitaire:1800, fournisseur:'Marché Sandaga', total:14400},
+      {id:uid('ACH'), date:'2026-08-20', nom:'Riz brisé', categorie:'Féculent', quantite:50, unite:'kg', prixUnitaire:500, fournisseur:'Marché Sandaga', total:25000, stockId:'stk-riz'},
+      {id:uid('ACH'), date:'2026-08-22', nom:'Poulet', categorie:'Protéine', quantite:30, unite:'kg', prixUnitaire:2200, fournisseur:'Poissonnerie Rue 10', total:66000, stockId:'stk-poulet'},
+      {id:uid('ACH'), date:'2026-08-24', nom:'Huile végétale', categorie:'Condiment', quantite:20, unite:'L', prixUnitaire:950, fournisseur:'Grossiste Touba', total:19000, stockId:'stk-huile'},
+      {id:uid('ACH'), date:'2026-08-25', nom:'Tomate fraîche', categorie:'Légume', quantite:15, unite:'kg', prixUnitaire:450, fournisseur:'Marché Sandaga', total:6750, stockId:'stk-tomate'},
+      {id:uid('ACH'), date:'2026-08-21', nom:'Eau minérale 50cl', categorie:'Boisson', quantite:96, unite:'unité', prixUnitaire:150, fournisseur:'Fournisseur Boissons SN', total:14400, stockId:'stk-eau'},
+      {id:uid('ACH'), date:'2026-08-18', nom:'Bissap (fleurs séchées)', categorie:'Boisson', quantite:8, unite:'kg', prixUnitaire:1800, fournisseur:'Marché Sandaga', total:14400, stockId:'stk-bissap'},
     ],
     expenses: [
       {id:uid('DEP'), date:'2026-08-01', categorie:'Loyer', description:'Loyer local commercial - Août', montant:150000, type:'Exploitation'},
@@ -1357,6 +1363,31 @@ function computeTotals(){
   const clientsJour = salesCountOn(today);
   const alerts = state.stock.filter(s=>Number(s.actuel) < Number(s.min)).length;
   return {salesTotal,purchasesTotal,expensesTotal,expensesExploitation,expensesInvestissement,payroll,profit,margeExploitation,resultatApresInvestissements,caJour,caSemaine,caMois,qtyVendue,orders,panierMoyen,clientsJour,alerts};
+}
+
+/* Bénéfice d'un jour donné (même logique que la marge d'exploitation, appliquée à une seule date) */
+function dailyMarge(date){
+  const ventes = state.sales.filter(s=>s.date===date).reduce((s,v)=>s+v.total,0);
+  const achats = state.purchases.filter(p=>p.date===date).reduce((s,p)=>s+p.total,0);
+  const depensesExpl = state.expenses.filter(e=>e.date===date && e.type!=='Investissement').reduce((s,e)=>s+e.montant,0);
+  const salaires = state.salaryPayments.filter(p=>p.date===date).reduce((s,p)=>s+p.montant,0);
+  const fournPaiements = state.supplierTransactions.filter(t=>t.date===date && t.type==='paiement').reduce((s,t)=>s+t.montant,0);
+  return ventes - achats - depensesExpl - salaires - fournPaiements;
+}
+/* Bénéfice total d'un mois donné (format 'AAAA-MM') */
+function monthlyMarge(mKey){
+  const ventes = state.sales.filter(s=>monthKey(s.date)===mKey).reduce((s,v)=>s+v.total,0);
+  const achats = state.purchases.filter(p=>monthKey(p.date)===mKey).reduce((s,p)=>s+p.total,0);
+  const depensesExpl = state.expenses.filter(e=>monthKey(e.date)===mKey && e.type!=='Investissement').reduce((s,e)=>s+e.montant,0);
+  const salaires = state.salaryPayments.filter(p=>monthKey(p.date)===mKey).reduce((s,p)=>s+p.montant,0);
+  const fournPaiements = state.supplierTransactions.filter(t=>monthKey(t.date)===mKey && t.type==='paiement').reduce((s,t)=>s+t.montant,0);
+  return ventes - achats - depensesExpl - salaires - fournPaiements;
+}
+function last7Days(){
+  const days = [];
+  const today = new Date(); today.setHours(0,0,0,0);
+  for(let i=6;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
+  return days;
 }
 
 /* ---------------- toasts ---------------- */
@@ -1534,6 +1565,8 @@ function renderDashboard(){
     {label:"CA du mois", value:fcfa(t.caMois), icon:'🗓️', accent:'--teal-800', tint:'--line-soft'},
     admin && {label:"Marge d'exploitation", value:fcfa(t.margeExploitation), neg:t.margeExploitation<0, icon:'📈', accent: t.margeExploitation>=0?'--leaf':'--bissap', tint: t.margeExploitation>=0?'--leaf-tint':'--bissap-tint', note:"Fonctionnement quotidien, hors démarrage"},
     admin && {label:"Résultat après investissements", value:fcfa(t.resultatApresInvestissements), neg:t.resultatApresInvestissements<0, icon:'🏗️', accent:'--bissap', tint:'--bissap-tint', note:"Inclut les coûts de lancement"},
+    admin && {label:"Bénéfice (semaine)", value:fcfa(last7Days().reduce((s,d)=>s+dailyMarge(d),0)), neg:last7Days().reduce((s,d)=>s+dailyMarge(d),0)<0, icon:'📅', accent:'--leaf', tint:'--leaf-tint', note:"7 derniers jours"},
+    admin && {label:"Bénéfice (mois)", value:fcfa(monthlyMarge(todayISO().slice(0,7))), neg:monthlyMarge(todayISO().slice(0,7))<0, icon:'🗓️', accent:'--leaf', tint:'--leaf-tint', note:"Mois en cours"},
     {label:"Produits vendus", value:fmt(t.qtyVendue)+" unités", icon:'🍽️', accent:'--leaf', tint:'--leaf-tint'},
     {label:"Clients du jour (estimé)", value:fmt(t.clientsJour), note:"Basé sur les commandes distinctes", icon:'🧍', accent:'--sky', tint:'--sky-tint'},
     admin && {label:"Total achats", value:fcfa(t.purchasesTotal), icon:'🛒', accent:'--teal-800', tint:'--line-soft'},
@@ -1612,6 +1645,18 @@ function renderDashboard(){
           backgroundColor:'rgba(221,154,43,.1)', fill:true, tension:.35, pointBackgroundColor:'#DD9A2B', pointRadius:4 }]},
       options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
         scales:{ y:{ beginAtZero:true, max:sharedEvoMax, grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
+    });
+
+    // Bénéfices journaliers de la semaine (7 derniers jours), couleur selon signe
+    const semaineDays = last7Days();
+    const semaineValues = semaineDays.map(d=>dailyMarge(d));
+    drawChart('chartBeneficeSemaine', {
+      type:'bar',
+      data:{ labels:semaineDays.map(d=>d.slice(5).split('-').reverse().join('/')),
+        datasets:[{ label:'Bénéfice (FCFA)', data:semaineValues,
+          backgroundColor:semaineValues.map(v=>v>=0?'#2F8F63':'#C0273A'), borderRadius:6 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{ y:{ grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
     });
 
     const months = new Set([...state.sales.map(s=>monthKey(s.date)), ...state.purchases.map(p=>monthKey(p.date))]);
@@ -2033,6 +2078,16 @@ function catOptions(selected){
   return state.categories.map(c=>`<option value="${escapeHtml(c.nom)}" ${c.nom===selected?'selected':''}>${escapeHtml(c.nom)}</option>`).join('');
 }
 
+/* Ajoute (sign=+1) ou retire (sign=-1) une quantité au stock lié à un achat, et met à jour la date de dernière entrée */
+function applyPurchaseToStock(stockId, quantite, sign, dateEntree){
+  if(!stockId) return;
+  const item = state.stock.find(s=>s.id===stockId);
+  if(!item) return;
+  item.actuel = Math.round((item.actuel + quantite*sign) * 1000) / 1000;
+  if(item.actuel < 0) item.actuel = 0;
+  if(sign > 0 && dateEntree) item.derniereEntree = dateEntree;
+}
+
 function openPurchaseForm(id){
   const item = id ? state.purchases.find(p=>p.id===id) : null;
   openModal({
@@ -2040,11 +2095,22 @@ function openPurchaseForm(id){
     bodyHtml: `
       <form id="purchaseForm">
         <div class="form-grid">
-          <div class="field full"><label>Nom du produit</label><input required name="nom" value="${item?escapeHtml(item.nom):''}" placeholder="Ex : Riz brisé"></div>
-          <div class="field"><label>Catégorie</label><select name="categorie">${catOptions(item?item.categorie:'')}</select></div>
+          <div class="field full"><label>Article <span class="hint">(lié au stock — la quantité achetée s'ajoutera automatiquement)</span></label>
+            <select name="stockId" id="purchaseStockSelect">
+              ${state.stock.map(s=>`<option value="${s.id}" data-unite="${escapeHtml(s.unite)}" data-cat="${escapeHtml(s.categorie)}" ${item&&item.stockId===s.id?'selected':''}>${escapeHtml(s.nom)} (${escapeHtml(s.unite)}) — actuellement ${fmt(s.actuel)} en stock</option>`).join('')}
+              <option value="__new__" ${item&&!item.stockId?'selected':''}>➕ Nouvel article (pas encore dans le stock)</option>
+            </select>
+          </div>
+          <div id="purchaseNewFields" style="display:none;">
+            <div class="form-grid">
+              <div class="field full"><label>Nom du nouvel article</label><input name="nouveauNom" value="${item&&!item.stockId?escapeHtml(item.nom):''}" placeholder="Ex : Riz brisé"></div>
+              <div class="field"><label>Catégorie</label><select name="categorie">${catOptions(item?item.categorie:'')}</select></div>
+              <div class="field"><label>Unité</label><input name="nouvelleUnite" value="${item&&!item.stockId?escapeHtml(item.unite):'kg'}" placeholder="kg, L, unité…"></div>
+              <div class="field"><label>Stock minimum (seuil d'alerte)</label><input type="number" min="0" name="nouveauMin" value="5"></div>
+            </div>
+          </div>
           <div class="field"><label>Fournisseur</label><input required name="fournisseur" value="${item?escapeHtml(item.fournisseur):''}" placeholder="Ex : Marché Sandaga"></div>
-          <div class="field"><label>Quantité</label><input required type="number" min="0" step="0.01" name="quantite" value="${item?item.quantite:''}"></div>
-          <div class="field"><label>Unité</label><input required name="unite" value="${item?escapeHtml(item.unite):'kg'}" placeholder="kg, L, unité…"></div>
+          <div class="field"><label>Quantité achetée</label><input required type="number" min="0" step="0.01" name="quantite" value="${item?item.quantite:''}"></div>
           <div class="field"><label>Prix d'achat unitaire (FCFA)</label><input required type="number" min="0" name="prixUnitaire" value="${item?item.prixUnitaire:''}"></div>
           <div class="field"><label>Date d'achat</label><input required type="date" name="date" value="${item?item.date:todayISO()}"></div>
           <div class="field full"><label>Mode de paiement</label>
@@ -2057,26 +2123,63 @@ function openPurchaseForm(id){
         </div>
       </form>`,
     onMount(overlay){
+      const stockSelect = overlay.querySelector('#purchaseStockSelect');
+      const newFields = overlay.querySelector('#purchaseNewFields');
+      const toggleNewFields = ()=>{ newFields.style.display = stockSelect.value === '__new__' ? '' : 'none'; };
+      stockSelect.addEventListener('change', toggleNewFields);
+      toggleNewFields();
       overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
       overlay.querySelector('#purchaseForm').addEventListener('submit', (e)=>{
         e.preventDefault();
         const f = new FormData(e.target);
         const quantite = Number(f.get('quantite')); const prixUnitaire = Number(f.get('prixUnitaire'));
-        const payload = {
-          nom:f.get('nom').trim(), categorie:f.get('categorie'), fournisseur:f.get('fournisseur').trim(),
-          quantite, unite:f.get('unite').trim(), prixUnitaire, date:f.get('date'), mode:f.get('mode'), total: Math.round(quantite*prixUnitaire*100)/100
-        };
-        if(item){ Object.assign(item, payload); toast('Achat modifié'); }
-        else { state.purchases.push({id:uid('ACH'), ...payload}); toast('Achat ajouté'); }
-        persist(); closeModal(); renderAchatsTable(); if(document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
+        const date = f.get('date');
+        let stockId = f.get('stockId');
+        let nom, unite, categorie;
+
+        if(stockId === '__new__'){
+          const nouveauNom = (f.get('nouveauNom')||'').trim();
+          if(!nouveauNom){ toast('Indiquez le nom du nouvel article', 'error'); return; }
+          categorie = f.get('categorie');
+          unite = (f.get('nouvelleUnite')||'unité').trim();
+          const nouveauStock = { id: uid('S'), nom: nouveauNom, categorie, unite, actuel: 0, min: Number(f.get('nouveauMin')||0), derniereEntree: date };
+          state.stock.push(nouveauStock);
+          stockId = nouveauStock.id;
+          nom = nouveauNom;
+        } else {
+          const stockItem = state.stock.find(s=>s.id===stockId);
+          if(!stockItem){ toast('Article introuvable', 'error'); return; }
+          nom = stockItem.nom; unite = stockItem.unite; categorie = stockItem.categorie;
+        }
+
+        const payload = { nom, categorie, stockId, fournisseur:f.get('fournisseur').trim(),
+          quantite, unite, prixUnitaire, date, mode:f.get('mode'), total: Math.round(quantite*prixUnitaire*100)/100 };
+
+        if(item){
+          // Annule l'ancienne quantité ajoutée au stock avant d'appliquer la nouvelle (y compris si l'article lié a changé)
+          if(item.stockId) applyPurchaseToStock(item.stockId, item.quantite, -1);
+          applyPurchaseToStock(stockId, quantite, +1, date);
+          Object.assign(item, payload); toast('Achat modifié');
+        } else {
+          applyPurchaseToStock(stockId, quantite, +1, date);
+          state.purchases.push({id:uid('ACH'), ...payload}); toast('Achat ajouté — stock mis à jour');
+        }
+        persist(); closeModal(); renderAchatsTable(); renderAchatsRanking();
+        if(document.getElementById('page-stock').classList.contains('active')) renderStock();
+        if(document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
       });
     }
   });
 }
 function deletePurchase(id){
   const p = state.purchases.find(p=>p.id===id);
-  confirmModal({ message:`Supprimer l'achat « ${escapeHtml(p.nom)} » du ${fmtDate(p.date)} ? Cette action est irréversible.`,
-    onConfirm(){ state.purchases = state.purchases.filter(x=>x.id!==id); persist(); renderAchatsTable(); toast('Achat supprimé'); } });
+  confirmModal({ message:`Supprimer l'achat « ${escapeHtml(p.nom)} » du ${fmtDate(p.date)} ? La quantité correspondante sera retirée du stock. Cette action est irréversible.`,
+    onConfirm(){
+      if(p.stockId) applyPurchaseToStock(p.stockId, p.quantite, -1);
+      state.purchases = state.purchases.filter(x=>x.id!==id); persist(); renderAchatsTable(); renderAchatsRanking();
+      if(document.getElementById('page-stock').classList.contains('active')) renderStock();
+      toast('Achat supprimé, stock ajusté');
+    } });
 }
 function viewPurchase(id){
   const p = state.purchases.find(p=>p.id===id);
