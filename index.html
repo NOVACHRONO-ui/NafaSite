@@ -1557,13 +1557,20 @@ function renderDashboard(){
   const byDate = {};
   state.sales.forEach(s => { byDate[s.date] = (byDate[s.date]||0) + s.total; });
   const dateLabels = Object.keys(byDate).sort();
+
+  // Évolution des achats (par jour) : calculée ici aussi pour synchroniser l'échelle Y avec le graphique des ventes
+  const byDateAchatsForScale = {};
+  state.purchases.forEach(p=>{ byDateAchatsForScale[p.date] = (byDateAchatsForScale[p.date]||0) + p.total; });
+  state.supplierTransactions.forEach(t=>{ if(t.type==='prise'){ byDateAchatsForScale[t.date] = (byDateAchatsForScale[t.date]||0) + t.montant; } });
+  const sharedEvoMax = Math.max(1, ...Object.values(byDate), ...Object.values(byDateAchatsForScale)) * 1.05;
+
   drawChart('chartVentesEvo', {
     type:'line',
     data:{ labels:dateLabels.map(d=>d.slice(5).split('-').reverse().join('/')),
       datasets:[{ label:'CA (FCFA)', data:dateLabels.map(d=>byDate[d]), borderColor:'#C0273A',
         backgroundColor:'rgba(192,39,58,.08)', fill:true, tension:.35, pointBackgroundColor:'#C0273A', pointRadius:4 }]},
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ y:{ beginAtZero:true, grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
+      scales:{ y:{ beginAtZero:true, max:sharedEvoMax, grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
   });
 
   // Répartition des ventes par catégorie
@@ -1596,18 +1603,15 @@ function renderDashboard(){
 
   // Achats vs Ventes par mois, Évolution des achats par jour, et Évolution des recrutements — réservés à l'Admin Principal (données financières/RH)
   if(admin){
-    // Évolution des achats par jour : achats matières + prises chez les fournisseurs
-    const byDateAchats = {};
-    state.purchases.forEach(p=>{ byDateAchats[p.date] = (byDateAchats[p.date]||0) + p.total; });
-    state.supplierTransactions.forEach(t=>{ if(t.type==='prise'){ byDateAchats[t.date] = (byDateAchats[t.date]||0) + t.montant; } });
-    const dateLabelsAchats = Object.keys(byDateAchats).sort();
+    // Évolution des achats par jour : achats matières + prises chez les fournisseurs (échelle Y identique à celle des ventes, calculée plus haut)
+    const dateLabelsAchats = Object.keys(byDateAchatsForScale).sort();
     drawChart('chartAchatsEvo', {
       type:'line',
       data:{ labels:dateLabelsAchats.map(d=>d.slice(5).split('-').reverse().join('/')),
-        datasets:[{ label:'Achats (FCFA)', data:dateLabelsAchats.map(d=>byDateAchats[d]), borderColor:'#DD9A2B',
+        datasets:[{ label:'Achats (FCFA)', data:dateLabelsAchats.map(d=>byDateAchatsForScale[d]), borderColor:'#DD9A2B',
           backgroundColor:'rgba(221,154,43,.1)', fill:true, tension:.35, pointBackgroundColor:'#DD9A2B', pointRadius:4 }]},
       options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-        scales:{ y:{ beginAtZero:true, grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
+        scales:{ y:{ beginAtZero:true, max:sharedEvoMax, grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
     });
 
     const months = new Set([...state.sales.map(s=>monthKey(s.date)), ...state.purchases.map(p=>monthKey(p.date))]);
