@@ -221,7 +221,7 @@ a{color:inherit;}
 .panel-head h3{font-size:15px;}
 .panel-head .desc{font-size:12px;color:var(--ink-soft);margin-top:2px;}
 .panel-body{padding:18px 20px;}
-.tabs-mini{display:flex;background:var(--line-soft);border-radius:9px;padding:3px;gap:2px;}
+.tabs-mini{display:flex;flex-wrap:wrap;background:var(--line-soft);border-radius:9px;padding:3px;gap:2px;}
 .tabs-mini button{border:none;background:transparent;padding:5px 10px;border-radius:7px;font-size:11.8px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
 .tabs-mini button.active{background:#fff;color:var(--teal-950);box-shadow:var(--shadow-sm);}
 
@@ -489,6 +489,13 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         </div>
         <div class="kpi-grid" id="dashKpis"></div>
 
+        <div class="panel" data-roles="admin" style="margin-bottom:22px;">
+          <div class="panel-head">
+            <div><h3>🎯 Rentabilité</h3><div class="desc">Marge + Trésorerie saine + Durabilité</div></div>
+          </div>
+          <div class="panel-body" id="rentabiliteBody"></div>
+        </div>
+
         <div class="charts-grid">
           <div class="panel">
             <div class="panel-head">
@@ -521,7 +528,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
           </div>
           <div class="panel">
             <div class="panel-head">
-              <div><h3>Fréquentation estimée</h3><div class="desc">Clients (commandes distinctes) par jour</div></div>
+              <div><h3>Fréquentation estimée</h3><div class="desc">Clients par jour (1 unité vendue = 1 client)</div></div>
             </div>
             <div class="panel-body"><div class="chart-wrap"><canvas id="chartFrequentation"></canvas></div></div>
           </div>
@@ -692,6 +699,11 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
             <button class="btn btn-primary" id="btnAddStock" data-roles="admin">➕ Ajouter un article</button>
           </div>
         </div>
+        <div class="toolbar" style="margin-bottom:10px;">
+          <div class="tabs-mini" id="stockListTabs"></div>
+          <button class="btn btn-soft btn-sm" id="btnAddStockList" data-roles="admin">➕ Nouvelle liste</button>
+          <button class="btn btn-soft btn-sm" id="btnManageStockLists" data-roles="admin">🗂️ Gérer les listes</button>
+        </div>
         <div class="toolbar">
           <div class="search-box"><span class="ic">🔎</span><input id="stockSearch" placeholder="Rechercher un article…"></div>
           <select class="select-filter" id="stockStatusFilter">
@@ -701,7 +713,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
           </select>
           <span class="pill pill-neutral" id="stockTotalTag"></span>
           <div class="spacer"></div>
-          <button class="btn btn-danger btn-sm" id="btnWipeStock" data-roles="admin">🗑️ Tout supprimer</button>
+          <button class="btn btn-danger btn-sm" id="btnWipeStock" data-roles="admin">🗑️ Tout supprimer (liste active)</button>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -717,6 +729,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
           <div><div class="eyebrow">Équipe</div><h2>Gestion des employés</h2></div>
           <div class="section-actions">
             <button class="btn btn-ghost" id="btnSalaryCalc" data-roles="admin">💵 Calcul des salaires</button>
+            <button class="btn btn-ghost" id="btnGestionRemun" data-roles="admin">💼 Rémunération gestion</button>
             <button class="btn btn-primary" id="btnAddEmployee">➕ Ajouter un employé</button>
           </div>
         </div>
@@ -954,6 +967,8 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
                   <div class="field"><label>Ville</label><input id="settingsVille" name="ville"></div>
                   <div class="field"><label>Devise</label><input id="settingsDevise" name="devise"></div>
                   <div class="field"><label>Référence du cycle de repos <span class="hint">(Jour 1 de la rotation A→G)</span></label><input type="date" id="settingsCongeCycle" name="congeCycleStart"></div>
+                  <div class="field"><label>Prime d'ancienneté <span class="hint">(% par année d'ancienneté)</span></label><input type="number" min="0" step="0.1" id="settingsPrimeParAn" name="primeAncienneteParAn"></div>
+                  <div class="field"><label>Prime d'ancienneté — plafond <span class="hint">(% maximum, quelle que soit l'ancienneté)</span></label><input type="number" min="0" step="1" id="settingsPrimeMax" name="primeAncienneteMax"></div>
                 </div>
                 <div class="form-actions"><button type="submit" class="btn btn-primary">Enregistrer les paramètres</button></div>
               </form>
@@ -1050,11 +1065,30 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
 /* ---------------- utilitaires ---------------- */
 const $ = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-const uid = (p) => p + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+let _uidCounter = 0;
+const uid = (p) => p + '-' + Date.now().toString(36) + (_uidCounter++).toString(36) + Math.random().toString(36).slice(2,6);
 const fmt = (n) => (Math.round(n||0)).toLocaleString('fr-FR');
 const fcfa = (n) => fmt(n) + ' FCFA';
-const todayISO = () => new Date().toISOString().slice(0,10);
+const todayISO = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+};
+/* Convertit un objet Date en chaîne AAAA-MM-JJ en heure LOCALE (jamais .toISOString(), qui bascule en UTC et peut décaler la date d'un jour) */
+const toLocalISO = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+};
 const escapeHtml = (s='') => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* Limite la fréquence d'exécution d'une fonction coûteuse (ex : re-rendu d'un tableau à chaque frappe clavier) */
+function debounce(fn, delay=180){
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(()=>fn(...args), delay); };
+}
 
 /* ---------------- authentification : hachage, session, rôles ---------------- */
 async function sha256Hex(text){
@@ -1147,7 +1181,7 @@ function monthKey(dateStr){ return dateStr.slice(0,7); }
 function seedState(){
   const demoSupplierId = uid('SUP');
   return {
-    settings: { nom: "Chez Awa — Restaurant Sénégalais", ville: "Touba, Sénégal", devise: "FCFA", congeCycleStart: '2026-08-01', restGroupsCount: 7 },
+    settings: { nom: "Chez Awa — Restaurant Sénégalais", ville: "Touba, Sénégal", devise: "FCFA", congeCycleStart: '2026-08-01', restGroupsCount: 7, primeAncienneteParAn: 1, primeAncienneteMax: 20 },
     users: [
       {id:'admin', username:'admin', nom:'Administrateur Principal', role:'admin', passwordHash:'6051fc84a7a0d74c225fb18a496b09952da5642e60723ecae543298edd7d82d6'},
       {id:'caissiere', username:'caissiere', nom:'Caissière', role:'cashier', passwordHash:'4b81c545381a471db3e6d604be20b8755f5c43b77faad7d5aac820f9dc45e340'},
@@ -1214,31 +1248,34 @@ function seedState(){
       {id:uid('V'), date:'2026-08-27', commande:'C005', table:2, produitId:'P003', produitNom:'Mafé viande', quantite:2, prixUnitaire:2200, total:4400, paiement:'Mobile Money'},
       {id:uid('V'), date:'2026-08-27', commande:'C006', table:6, produitId:'P004', produitNom:'Thiakry', quantite:4, prixUnitaire:800, total:3200, paiement:'Espèces'},
     ],
+    stockLists: [
+      {id:'sl-principal', nom:'Stock principal'},
+    ],
     stock: [
-      {id:'stk-riz', nom:'Riz brisé', categorie:'Féculent', unite:'kg', actuel:40, min:20, derniereEntree:'2026-08-20'},
-      {id:'stk-poisson', nom:'Poisson (thiof)', categorie:'Protéine', unite:'kg', actuel:8, min:10, derniereEntree:'2026-08-24'},
-      {id:'stk-poulet', nom:'Poulet', categorie:'Protéine', unite:'kg', actuel:25, min:15, derniereEntree:'2026-08-22'},
-      {id:'stk-viande', nom:'Viande de bœuf', categorie:'Protéine', unite:'kg', actuel:18, min:10, derniereEntree:'2026-08-23'},
-      {id:'stk-arachide', nom:"Pâte d'arachide", categorie:'Condiment', unite:'kg', actuel:10, min:5, derniereEntree:'2026-08-19'},
-      {id:'stk-huile', nom:'Huile végétale', categorie:'Condiment', unite:'L', actuel:15, min:10, derniereEntree:'2026-08-15'},
-      {id:'stk-oignons', nom:'Oignons', categorie:'Légume', unite:'kg', actuel:12, min:15, derniereEntree:'2026-08-23'},
-      {id:'stk-tomate', nom:'Tomate fraîche', categorie:'Légume', unite:'kg', actuel:6, min:10, derniereEntree:'2026-08-25'},
-      {id:'stk-concentre', nom:'Concentré de tomate', categorie:'Condiment', unite:'boîte', actuel:30, min:12, derniereEntree:'2026-08-10'},
-      {id:'stk-salade', nom:'Salade / Laitue', categorie:'Légume', unite:'kg', actuel:9, min:6, derniereEntree:'2026-08-24'},
-      {id:'stk-farine', nom:'Farine de blé', categorie:'Féculent', unite:'kg', actuel:20, min:10, derniereEntree:'2026-08-18'},
-      {id:'stk-couscous', nom:'Couscous de mil', categorie:'Féculent', unite:'kg', actuel:14, min:8, derniereEntree:'2026-08-17'},
-      {id:'stk-lait', nom:'Lait caillé', categorie:'Condiment', unite:'L', actuel:10, min:8, derniereEntree:'2026-08-24'},
-      {id:'stk-bissap', nom:'Bissap (fleurs séchées)', categorie:'Boisson', unite:'kg', actuel:5, min:3, derniereEntree:'2026-08-18'},
-      {id:'stk-bouye', nom:'Poudre de bouye (pain de singe)', categorie:'Boisson', unite:'kg', actuel:4, min:2, derniereEntree:'2026-08-16'},
-      {id:'stk-eau', nom:'Eau minérale 50cl', categorie:'Boisson', unite:'unité', actuel:120, min:48, derniereEntree:'2026-08-21'},
-      {id:'stk-sacs', nom:'Sacs / emballages', categorie:'Consommable', unite:'unité', actuel:200, min:100, derniereEntree:'2026-08-12'},
+      {id:'stk-riz', nom:'Riz brisé', categorie:'Féculent', unite:'kg', actuel:40, min:20, derniereEntree:'2026-08-20', listeId:'sl-principal'},
+      {id:'stk-poisson', nom:'Poisson (thiof)', categorie:'Protéine', unite:'kg', actuel:8, min:10, derniereEntree:'2026-08-24', listeId:'sl-principal'},
+      {id:'stk-poulet', nom:'Poulet', categorie:'Protéine', unite:'kg', actuel:25, min:15, derniereEntree:'2026-08-22', listeId:'sl-principal'},
+      {id:'stk-viande', nom:'Viande de bœuf', categorie:'Protéine', unite:'kg', actuel:18, min:10, derniereEntree:'2026-08-23', listeId:'sl-principal'},
+      {id:'stk-arachide', nom:"Pâte d'arachide", categorie:'Condiment', unite:'kg', actuel:10, min:5, derniereEntree:'2026-08-19', listeId:'sl-principal'},
+      {id:'stk-huile', nom:'Huile végétale', categorie:'Condiment', unite:'L', actuel:15, min:10, derniereEntree:'2026-08-15', listeId:'sl-principal'},
+      {id:'stk-oignons', nom:'Oignons', categorie:'Légume', unite:'kg', actuel:12, min:15, derniereEntree:'2026-08-23', listeId:'sl-principal'},
+      {id:'stk-tomate', nom:'Tomate fraîche', categorie:'Légume', unite:'kg', actuel:6, min:10, derniereEntree:'2026-08-25', listeId:'sl-principal'},
+      {id:'stk-concentre', nom:'Concentré de tomate', categorie:'Condiment', unite:'boîte', actuel:30, min:12, derniereEntree:'2026-08-10', listeId:'sl-principal'},
+      {id:'stk-salade', nom:'Salade / Laitue', categorie:'Légume', unite:'kg', actuel:9, min:6, derniereEntree:'2026-08-24', listeId:'sl-principal'},
+      {id:'stk-farine', nom:'Farine de blé', categorie:'Féculent', unite:'kg', actuel:20, min:10, derniereEntree:'2026-08-18', listeId:'sl-principal'},
+      {id:'stk-couscous', nom:'Couscous de mil', categorie:'Féculent', unite:'kg', actuel:14, min:8, derniereEntree:'2026-08-17', listeId:'sl-principal'},
+      {id:'stk-lait', nom:'Lait caillé', categorie:'Condiment', unite:'L', actuel:10, min:8, derniereEntree:'2026-08-24', listeId:'sl-principal'},
+      {id:'stk-bissap', nom:'Bissap (fleurs séchées)', categorie:'Boisson', unite:'kg', actuel:5, min:3, derniereEntree:'2026-08-18', listeId:'sl-principal'},
+      {id:'stk-bouye', nom:'Poudre de bouye (pain de singe)', categorie:'Boisson', unite:'kg', actuel:4, min:2, derniereEntree:'2026-08-16', listeId:'sl-principal'},
+      {id:'stk-eau', nom:'Eau minérale 50cl', categorie:'Boisson', unite:'unité', actuel:120, min:48, derniereEntree:'2026-08-21', listeId:'sl-principal'},
+      {id:'stk-sacs', nom:'Sacs / emballages', categorie:'Consommable', unite:'unité', actuel:200, min:100, derniereEntree:'2026-08-12', listeId:'sl-principal'},
     ],
     subscriptions: [
       {id:uid('SUB'), type:'particulier', nom:'Cheikh Ndoye', telephone:'77 987 65 43', adresse:'', contact:'', montant:15000, dateDebut:'2026-08-01', dateExpiration:'2026-08-31', typeAbonnement:'Mensuel Déjeuner'},
       {id:uid('SUB'), type:'entreprise', nom:'SenTech SARL', telephone:'33 800 12 12', adresse:'Sacré-Cœur 3, Dakar', contact:'Mme Diagne', montant:250000, dateDebut:'2026-08-01', dateExpiration:'2026-08-31', typeAbonnement:'Pack Entreprise 20 repas'},
     ],
     employees: [
-      {id:uid('EMP'), nom:'Moussa Diop', poste:'Chef cuisinier', telephone:'77 123 45 67', dateEmbauche:'2023-03-01', salaire:180000, statut:'Actif', reposSlot:1, niveauResponsabilite:5, competences:5, experienceAnnees:8},
+      {id:uid('EMP'), nom:'Moussa Diop', poste:'Chef cuisinier', telephone:'77 123 45 67', dateEmbauche:'2023-03-01', salaire:180000, statut:'Actif', reposSlot:1, niveauResponsabilite:5, competences:5, experienceAnnees:8, estGestionnaire:true, pourcentageGestion:3},
       {id:uid('EMP'), nom:'Fatou Ndiaye', poste:'Serveuse', telephone:'76 234 56 78', dateEmbauche:'2023-06-15', salaire:90000, statut:'Actif', reposSlot:2, niveauResponsabilite:2, competences:3, experienceAnnees:2},
       {id:uid('EMP'), nom:'Ibrahima Sarr', poste:'Serveur', telephone:'70 345 67 89', dateEmbauche:'2024-01-10', salaire:90000, statut:'Actif', reposSlot:3, niveauResponsabilite:2, competences:3, experienceAnnees:1},
       {id:uid('EMP'), nom:'Aissatou Ba', poste:'Caissière', telephone:'77 456 78 90', dateEmbauche:'2022-11-05', salaire:100000, statut:'Actif', reposSlot:4, niveauResponsabilite:3, competences:4, experienceAnnees:4},
@@ -1257,7 +1294,7 @@ function seedState(){
       {id:uid('SUPT'), supplierId: demoSupplierId, date:'2026-08-22', type:'prise', description:'Sacs de riz + condiments divers', montant:35000, auteur:'Administrateur Principal'},
       {id:uid('SUPT'), supplierId: demoSupplierId, date:'2026-08-25', type:'paiement', description:'Règlement partiel', montant:20000, mode:'Espèces', auteur:'Administrateur Principal'},
     ],
-    shoppingList: [],
+    shoppingLists: { 'sl-principal': [] },
     teams: [],
   };
 }
@@ -1293,6 +1330,8 @@ function ensureDataIntegrity(){
     if(e.niveauResponsabilite === undefined){ e.niveauResponsabilite = 3; changed = true; }
     if(e.competences === undefined){ e.competences = 3; changed = true; }
     if(e.experienceAnnees === undefined){ e.experienceAnnees = 0; changed = true; }
+    if(e.estGestionnaire === undefined){ e.estGestionnaire = false; changed = true; }
+    if(e.pourcentageGestion === undefined){ e.pourcentageGestion = 0; changed = true; }
   });
   // Anciens achats/dépenses enregistrés avant l'ajout du mode de paiement (nécessaire pour la trésorerie)
   (state.purchases||[]).forEach(p=>{ if(!p.mode){ p.mode = 'Espèces'; changed = true; } });
@@ -1301,7 +1340,27 @@ function ensureDataIntegrity(){
     if(!e.type){ e.type = 'Exploitation'; changed = true; } // par défaut : dépense récurrente, pas un investissement de démarrage
   });
   if(state.settings && !state.settings.congeCycleStart){ state.settings.congeCycleStart = '2026-08-01'; changed = true; }
+  if(state.settings && state.settings.primeAncienneteParAn === undefined){ state.settings.primeAncienneteParAn = 1; changed = true; }
+  if(state.settings && state.settings.primeAncienneteMax === undefined){ state.settings.primeAncienneteMax = 20; changed = true; }
   if(state.settings && !state.settings.restGroupsCount){ state.settings.restGroupsCount = 7; changed = true; }
+  // Anciennes données enregistrées avant l'ajout des listes de stock multiples : on crée une liste
+  // par défaut et on y rattache tous les articles déjà existants, sans rien perdre.
+  if(!Array.isArray(state.stockLists) || state.stockLists.length === 0){
+    state.stockLists = [{id:'sl-principal', nom:'Stock principal'}];
+    changed = true;
+  }
+  const defaultStockListId = state.stockLists[0].id;
+  (state.stock||[]).forEach(s=>{ if(!s.listeId || !state.stockLists.some(l=>l.id===s.listeId)){ s.listeId = defaultStockListId; changed = true; } });
+  if(!state.shoppingLists || typeof state.shoppingLists !== 'object' || Array.isArray(state.shoppingLists)){
+    state.shoppingLists = {};
+    changed = true;
+  }
+  // Ancienne liste de courses unique (à plat) : on la rattache à la liste de stock par défaut
+  if(Array.isArray(state.shoppingList) && state.shoppingList.length && !(state.shoppingLists[defaultStockListId]||[]).length){
+    state.shoppingLists[defaultStockListId] = state.shoppingList;
+    changed = true;
+  }
+  state.stockLists.forEach(l=>{ if(!Array.isArray(state.shoppingLists[l.id])){ state.shoppingLists[l.id] = []; changed = true; } });
   if(changed) persist(true);
 }
 
@@ -1324,11 +1383,20 @@ function persist(immediate=false){
     const doSave = () => {
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
       catch(e){ console.error('Erreur de sauvegarde', e); toast('Erreur de sauvegarde des données', 'error'); }
+      saveTimer = null;
       resolve();
     };
     if(immediate) doSave(); else saveTimer = setTimeout(doSave, 250);
   });
 }
+/* Sauvegarde immédiate de toute écriture différée en attente (anti-perte de données
+   si l'utilisateur ferme l'onglet / recharge la page dans les 250ms suivant une action) */
+function flushPersist(){
+  if(saveTimer){ clearTimeout(saveTimer); saveTimer = null; }
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ /* déjà signalé par persist() le cas échéant */ }
+}
+window.addEventListener('beforeunload', flushPersist);
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') flushPersist(); });
 
 /* ---------------- helpers de données ---------------- */
 function catColor(nom){
@@ -1339,6 +1407,7 @@ function activeEmployees(){ return state.employees.filter(e => e.statut === 'Act
 function distinctOrders(){ return new Set(state.sales.map(s => s.commande || s.id)).size; }
 function distinctOrdersOn(date){ return new Set(state.sales.filter(s=>s.date===date).map(s => s.commande || s.id)).size; }
 function salesCountOn(date){ return state.sales.filter(s=>s.date===date).length; }
+function qtyVenduOn(date){ return state.sales.filter(s=>s.date===date).reduce((a,s)=>a+Number(s.quantite||0),0); }
 
 function computeTotals(){
   const salesTotal = state.sales.reduce((a,s)=>a+s.total,0);
@@ -1360,9 +1429,12 @@ function computeTotals(){
   const qtyVendue = state.sales.reduce((a,s)=>a+Number(s.quantite||0),0);
   const orders = distinctOrders();
   const panierMoyen = orders ? salesTotal/orders : 0;
-  const clientsJour = salesCountOn(today);
+  const clientsJour = qtyVenduOn(today);
+  const clientsSemaine = state.sales.filter(s=>daysAgo(s.date)>=0 && daysAgo(s.date)<7).reduce((a,s)=>a+Number(s.quantite||0),0);
+  const clientsMois = state.sales.filter(s=>monthKey(s.date)===curMonth).reduce((a,s)=>a+Number(s.quantite||0),0);
+  const clientsTotal = qtyVendue;
   const alerts = state.stock.filter(s=>Number(s.actuel) < Number(s.min)).length;
-  return {salesTotal,purchasesTotal,expensesTotal,expensesExploitation,expensesInvestissement,payroll,profit,margeExploitation,resultatApresInvestissements,caJour,caSemaine,caMois,qtyVendue,orders,panierMoyen,clientsJour,alerts};
+  return {salesTotal,purchasesTotal,expensesTotal,expensesExploitation,expensesInvestissement,payroll,profit,margeExploitation,resultatApresInvestissements,caJour,caSemaine,caMois,qtyVendue,orders,panierMoyen,clientsJour,clientsSemaine,clientsMois,clientsTotal,alerts};
 }
 
 /* Bénéfice d'un jour donné (même logique que la marge d'exploitation, appliquée à une seule date) */
@@ -1388,6 +1460,70 @@ function last7Days(){
   const today = new Date(); today.setHours(0,0,0,0);
   for(let i=6;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
   return days;
+}
+function monthlyVentesTotal(mKey){ return state.sales.filter(s=>monthKey(s.date)===mKey).reduce((s,v)=>s+v.total,0); }
+function monthlyExpensesTotal(mKey){
+  const achats = state.purchases.filter(p=>monthKey(p.date)===mKey).reduce((s,p)=>s+p.total,0);
+  const depensesExpl = state.expenses.filter(e=>monthKey(e.date)===mKey && e.type!=='Investissement').reduce((s,e)=>s+e.montant,0);
+  const salaires = state.salaryPayments.filter(p=>monthKey(p.date)===mKey).reduce((s,p)=>s+p.montant,0);
+  return achats + depensesExpl + salaires;
+}
+function previousMonthKey(mKey){
+  const d = new Date(mKey+'-01T00:00:00'); d.setMonth(d.getMonth()-1);
+  return d.toISOString().slice(0,7);
+}
+
+/* Rentabilité = Marge + Trésorerie saine + Durabilité
+   - Marge : la marge d'exploitation du mois est-elle suffisante par rapport au CA ?
+   - Trésorerie saine : le solde de trésorerie couvre-t-il assez de mois de dépenses ?
+   - Durabilité : la marge progresse-t-elle (ou se maintient-elle) par rapport au mois précédent ? */
+function computeRentabilite(){
+  const mKey = todayISO().slice(0,7);
+  const mKeyPrec = previousMonthKey(mKey);
+  const caMois = monthlyVentesTotal(mKey);
+  const margeMois = monthlyMarge(mKey);
+  const margePrec = monthlyMarge(mKeyPrec);
+  const depensesMois = monthlyExpensesTotal(mKey);
+  const { total: soldeTresorerie } = computeTreasury();
+
+  // 1. Marge : ratio marge / CA du mois
+  const margeRatio = caMois ? (margeMois / caMois) * 100 : (margeMois>0?100:0);
+  let margeScore, margeLabel;
+  if(margeRatio >= 15){ margeScore=100; margeLabel='Bonne'; }
+  else if(margeRatio >= 5){ margeScore=65; margeLabel='Moyenne'; }
+  else if(margeRatio >= 0){ margeScore=35; margeLabel='Faible'; }
+  else { margeScore=0; margeLabel='Critique'; }
+
+  // 2. Trésorerie saine : nombre de mois de dépenses couverts par le solde actuel
+  const moisCouverture = depensesMois>0 ? soldeTresorerie/depensesMois : (soldeTresorerie>0?2:0);
+  let tresoScore, tresoLabel;
+  if(moisCouverture >= 1){ tresoScore=100; tresoLabel='Saine'; }
+  else if(moisCouverture >= 0.5){ tresoScore=65; tresoLabel='Correcte'; }
+  else if(moisCouverture >= 0){ tresoScore=35; tresoLabel='Fragile'; }
+  else { tresoScore=0; tresoLabel='Critique'; }
+
+  // 3. Durabilité : évolution de la marge par rapport au mois précédent
+  let croissanceMarge = null, durabiliteScore, durabiliteLabel;
+  if(margePrec === 0){
+    durabiliteScore = margeMois>0 ? 70 : 30;
+    durabiliteLabel = margeMois>0 ? 'Progresse' : 'À surveiller';
+  } else {
+    croissanceMarge = (margeMois - margePrec) / Math.abs(margePrec) * 100;
+    if(croissanceMarge >= 5){ durabiliteScore=100; durabiliteLabel='En croissance'; }
+    else if(croissanceMarge >= -10){ durabiliteScore=60; durabiliteLabel='Stable'; }
+    else { durabiliteScore=25; durabiliteLabel='En baisse'; }
+  }
+
+  const scoreGlobal = Math.round((margeScore + tresoScore + durabiliteScore) / 3);
+  let statutGlobal, statutColor;
+  if(scoreGlobal>=80){ statutGlobal='Excellente'; statutColor='--leaf'; }
+  else if(scoreGlobal>=60){ statutGlobal='Bonne'; statutColor='--leaf'; }
+  else if(scoreGlobal>=40){ statutGlobal='Moyenne'; statutColor='--millet'; }
+  else if(scoreGlobal>=20){ statutGlobal='Fragile'; statutColor='--bissap'; }
+  else { statutGlobal='Critique'; statutColor='--bissap'; }
+
+  return { margeMois, margeRatio, margeScore, margeLabel, soldeTresorerie, depensesMois, moisCouverture, tresoScore, tresoLabel,
+    croissanceMarge, durabiliteScore, durabiliteLabel, scoreGlobal, statutGlobal, statutColor };
 }
 
 /* ---------------- toasts ---------------- */
@@ -1568,7 +1704,9 @@ function renderDashboard(){
     admin && {label:"Bénéfice (semaine)", value:fcfa(last7Days().reduce((s,d)=>s+dailyMarge(d),0)), neg:last7Days().reduce((s,d)=>s+dailyMarge(d),0)<0, icon:'📅', accent:'--leaf', tint:'--leaf-tint', note:"7 derniers jours"},
     admin && {label:"Bénéfice (mois)", value:fcfa(monthlyMarge(todayISO().slice(0,7))), neg:monthlyMarge(todayISO().slice(0,7))<0, icon:'🗓️', accent:'--leaf', tint:'--leaf-tint', note:"Mois en cours"},
     {label:"Produits vendus", value:fmt(t.qtyVendue)+" unités", icon:'🍽️', accent:'--leaf', tint:'--leaf-tint'},
-    {label:"Clients du jour (estimé)", value:fmt(t.clientsJour), note:"Basé sur les commandes distinctes", icon:'🧍', accent:'--sky', tint:'--sky-tint'},
+    {label:"Clients du jour (estimé)", value:fmt(t.clientsJour), note:"1 unité vendue = 1 client", icon:'🧍', accent:'--sky', tint:'--sky-tint'},
+    {label:"Clients (mois)", value:fmt(t.clientsMois), note:"1 unité vendue = 1 client, mois en cours", icon:'👥', accent:'--sky', tint:'--sky-tint'},
+    {label:"Clients (total)", value:fmt(t.clientsTotal), note:"Quantité totale vendue depuis le début", icon:'📈', accent:'--sky', tint:'--sky-tint'},
     admin && {label:"Total achats", value:fcfa(t.purchasesTotal), icon:'🛒', accent:'--teal-800', tint:'--line-soft'},
     admin && {label:"Total dépenses", value:fcfa(t.expensesTotal), icon:'💰', accent:'--bissap', tint:'--bissap-tint'},
     admin && {label:"Masse salariale", value:fcfa(t.payroll), note:activeEmployees().length+" employé(s) actif(s)", icon:'👥', accent:'--teal-800', tint:'--line-soft'},
@@ -1622,20 +1760,46 @@ function renderDashboard(){
 
   renderTopFlopChart('top');
 
-  // Fréquentation estimée (clients = commandes distinctes par jour), 14 derniers jours
+  // Fréquentation estimée (1 unité vendue = 1 client, par jour), 14 derniers jours
   const freqDays = [];
   const freqToday = new Date(); freqToday.setHours(0,0,0,0);
   for(let i=13;i>=0;i--){ const d=new Date(freqToday); d.setDate(d.getDate()-i); freqDays.push(d.toISOString().slice(0,10)); }
   drawChart('chartFrequentation', {
     type:'bar',
     data:{ labels: freqDays.map(d=>d.slice(5).split('-').reverse().join('/')),
-      datasets:[{ label:'Clients estimés', data: freqDays.map(d=>salesCountOn(d)), backgroundColor:'#2C6E9E', borderRadius:6 }] },
+      datasets:[{ label:'Clients estimés', data: freqDays.map(d=>qtyVenduOn(d)), backgroundColor:'#2C6E9E', borderRadius:6 }] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
       scales:{ y:{beginAtZero:true, ticks:{stepSize:1}, grid:{color:'#EEF2EE'}}, x:{grid:{display:false}} } }
   });
 
   // Achats vs Ventes par mois, Évolution des achats par jour, et Évolution des recrutements — réservés à l'Admin Principal (données financières/RH)
   if(admin){
+    // Rentabilité = Marge + Trésorerie saine + Durabilité
+    const r = computeRentabilite();
+    const rowHtml = (icon, titre, label, score, detail) => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line-soft);">
+        <div style="font-size:20px;">${icon}</div>
+        <div style="flex:1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <b style="font-size:13px;">${titre}</b>
+            <span class="pill ${score>=80?'pill-ok':score>=40?'pill-gold':'pill-warn'}">${label}</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">${detail}</div>
+          <div class="stock-bar-track" style="margin-top:6px;"><div class="stock-bar-fill" style="width:${score}%;background:${score>=80?'var(--leaf)':score>=40?'var(--millet)':'var(--bissap)'}"></div></div>
+        </div>
+      </div>`;
+    $('#rentabiliteBody').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);">Score global de rentabilité</div>
+          <div style="font-family:var(--font-display);font-size:26px;font-weight:700;color:var(${r.statutColor});">${r.statutGlobal} <span class="mono" style="font-size:15px;color:var(--ink-soft);">(${r.scoreGlobal}/100)</span></div>
+        </div>
+      </div>
+      ${rowHtml('📈','Marge', r.margeLabel, r.margeScore, `Marge d'exploitation du mois : ${fcfa(r.margeMois)} soit ${Math.round(r.margeRatio*10)/10}% du CA`)}
+      ${rowHtml('🏦','Trésorerie saine', r.tresoLabel, r.tresoScore, `Solde actuel ${fcfa(r.soldeTresorerie)} — couvre ${r.moisCouverture>=2?'plus de 2 mois':Math.round(r.moisCouverture*10)/10+' mois'} de dépenses (${fcfa(r.depensesMois)}/mois)`)}
+      ${rowHtml('🌱','Durabilité', r.durabiliteLabel, r.durabiliteScore, r.croissanceMarge===null ? "Premier mois d'activité mesurable" : `Marge ${r.croissanceMarge>=0?'en hausse':'en baisse'} de ${Math.abs(Math.round(r.croissanceMarge*10)/10)}% par rapport au mois précédent`)}
+      <p style="font-size:11px;color:var(--ink-soft);margin-top:12px;line-height:1.5;">La rentabilité d'un restaurant repose sur trois éléments : une marge suffisante sur les ventes, une trésorerie saine pour couvrir les dépenses, et une gestion durable permettant à l'activité de fonctionner et de se développer dans le temps.</p>`;
+
     // Évolution des achats par jour : achats matières + prises chez les fournisseurs (échelle Y identique à celle des ventes, calculée plus haut)
     const dateLabelsAchats = Object.keys(byDateAchatsForScale).sort();
     drawChart('chartAchatsEvo', {
@@ -1789,8 +1953,9 @@ function printDailyReport(date){
     </div>`;
   }
 
-  const clientsJourRapport = ventes.length;
-  const panierMoyenJour = clientsJourRapport ? Math.round(totalVentes/clientsJourRapport) : 0;
+  const clientsJourRapport = ventes.reduce((s,v)=>s+Number(v.quantite||0),0);
+  const commandesJourRapport = new Set(ventes.map(v=>v.commande||v.id)).size;
+  const panierMoyenJour = commandesJourRapport ? Math.round(totalVentes/commandesJourRapport) : 0;
 
   const kpiCards = [
     {label:'Clients (estimé)', value:fmt(clientsJourRapport), color:'#2C6E9E', bg:'#E3EFF7'},
@@ -2617,17 +2782,37 @@ function printSalesByDay(){
    PAGE : STOCK
    ======================================================== */
 let stockFilter = { q:'', status:'' };
+let stockActiveListId = null;
+
+/* Garantit qu'une liste de stock est toujours sélectionnée (première liste par défaut) */
+function ensureStockActiveList(){
+  if(!state.stockLists.some(l=>l.id===stockActiveListId)){
+    stockActiveListId = state.stockLists[0] ? state.stockLists[0].id : null;
+  }
+  return stockActiveListId;
+}
+function itemsOfStockList(listId){ return state.stock.filter(s=>s.listeId===listId); }
+
+function renderStockListTabs(){
+  $('#stockListTabs').innerHTML = state.stockLists.map(l=>{
+    const alerts = itemsOfStockList(l.id).filter(s=>Number(s.actuel)<Number(s.min)).length;
+    return `<button data-list="${l.id}" class="${l.id===stockActiveListId?'active':''}">${escapeHtml(l.nom)}${alerts?` <span style="color:var(--bissap);">(${alerts})</span>`:''}</button>`;
+  }).join('');
+}
 
 function renderStock(){
+  ensureStockActiveList();
+  renderStockListTabs();
   const q = stockFilter.q.toLowerCase();
-  let rows = state.stock.filter(s=>{
+  const listItems = itemsOfStockList(stockActiveListId);
+  let rows = listItems.filter(s=>{
     const alert = Number(s.actuel) < Number(s.min);
     if(!(!q || s.nom.toLowerCase().includes(q))) return false;
     if(stockFilter.status==='alert' && !alert) return false;
     if(stockFilter.status==='ok' && alert) return false;
     return true;
   }).sort((a,b)=> a.nom.localeCompare(b.nom));
-  $('#stockTotalTag').textContent = rows.length + ' article(s) • ' + state.stock.filter(s=>Number(s.actuel)<Number(s.min)).length + ' en alerte';
+  $('#stockTotalTag').textContent = rows.length + ' article(s) • ' + listItems.filter(s=>Number(s.actuel)<Number(s.min)).length + ' en alerte';
   const admin = isAdmin();
   $('#stockTbody').innerHTML = rows.length ? rows.map(s=>{
     const alert = Number(s.actuel) < Number(s.min);
@@ -2676,6 +2861,9 @@ function openStockAdjustForm(id){
   });
 }
 
+function stockListOptions(selectedId){
+  return state.stockLists.map(l=>`<option value="${l.id}" ${l.id===selectedId?'selected':''}>${escapeHtml(l.nom)}</option>`).join('');
+}
 function openStockForm(id){
   const item = id ? state.stock.find(s=>s.id===id) : null;
   openModal({
@@ -2684,6 +2872,7 @@ function openStockForm(id){
       <form id="stockForm">
         <div class="form-grid">
           <div class="field full"><label>Nom de l'article</label><input required name="nom" value="${item?escapeHtml(item.nom):''}"></div>
+          <div class="field"><label>Liste de stock</label><select name="listeId">${stockListOptions(item?item.listeId:stockActiveListId)}</select></div>
           <div class="field"><label>Catégorie</label><select name="categorie">${catOptions(item?item.categorie:'')}</select></div>
           <div class="field"><label>Unité</label><input required name="unite" value="${item?escapeHtml(item.unite):'kg'}"></div>
           <div class="field"><label>Stock actuel</label><input required type="number" min="0" step="0.01" name="actuel" value="${item?item.actuel:''}"></div>
@@ -2700,11 +2889,11 @@ function openStockForm(id){
       overlay.querySelector('#stockForm').addEventListener('submit',(e)=>{
         e.preventDefault();
         const f = new FormData(e.target);
-        const payload = { nom:f.get('nom').trim(), categorie:f.get('categorie'), unite:f.get('unite').trim(),
+        const payload = { nom:f.get('nom').trim(), listeId:f.get('listeId'), categorie:f.get('categorie'), unite:f.get('unite').trim(),
           actuel:Number(f.get('actuel')), min:Number(f.get('min')), derniereEntree:f.get('derniereEntree') };
         if(item){ Object.assign(item, payload); toast('Article modifié'); }
         else { state.stock.push({id:uid('S'), ...payload}); toast('Article ajouté au stock'); }
-        persist(); closeModal(); renderStock(); if(document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
+        persist(); closeModal(); stockActiveListId = payload.listeId; renderStock(); if(document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
       });
     }
   });
@@ -2713,6 +2902,94 @@ function deleteStock(id){
   const s = state.stock.find(s=>s.id===id);
   confirmModal({ message:`Supprimer « ${escapeHtml(s.nom)} » du stock ? Cette action est irréversible.`,
     onConfirm(){ state.stock = state.stock.filter(x=>x.id!==id); persist(); renderStock(); toast('Article supprimé'); } });
+}
+
+/* ---------------- gestion des listes de stock (ex : Cuisine, Bar, Entrepôt…) ---------------- */
+function openStockListForm(id){
+  const item = id ? state.stockLists.find(l=>l.id===id) : null;
+  openModal({
+    title: item ? 'Renommer la liste' : 'Nouvelle liste de stock', narrow:true,
+    bodyHtml:`
+      <form id="stockListForm">
+        <div class="field"><label>Nom de la liste</label><input required name="nom" value="${item?escapeHtml(item.nom):''}" placeholder="Ex : Cuisine, Bar, Entrepôt…" autofocus></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">${item?'Enregistrer':'Créer la liste'}</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#stockListForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const nom = new FormData(e.target).get('nom').trim();
+        if(item){ item.nom = nom; toast('Liste renommée'); }
+        else {
+          const newList = {id:uid('SL'), nom};
+          state.stockLists.push(newList);
+          state.shoppingLists[newList.id] = [];
+          stockActiveListId = newList.id;
+          toast('Liste « ' + nom + ' » créée');
+        }
+        persist(); closeModal(); renderStock(); renderParametres();
+      });
+    }
+  });
+}
+function deleteStockList(id){
+  if(state.stockLists.length <= 1){ toast('Impossible de supprimer la dernière liste de stock', 'error'); return; }
+  const list = state.stockLists.find(l=>l.id===id);
+  const count = itemsOfStockList(id).length;
+  const otherList = state.stockLists.find(l=>l.id!==id);
+  passwordConfirmModal({
+    title:'Supprimer la liste', confirmLabel:'Supprimer la liste',
+    message: count
+      ? `Supprimer la liste « ${escapeHtml(list.nom)} » ? ${count} article(s) qu'elle contient seront déplacés vers « ${escapeHtml(otherList.nom)} ». Cette action est irréversible.`
+      : `Supprimer la liste « ${escapeHtml(list.nom)} » ? Cette action est irréversible.`,
+    onConfirm(){
+      state.stock.forEach(s=>{ if(s.listeId===id) s.listeId = otherList.id; });
+      delete state.shoppingLists[id];
+      state.stockLists = state.stockLists.filter(l=>l.id!==id);
+      if(stockActiveListId===id) stockActiveListId = otherList.id;
+      persist(); closeModal(); renderStock(); renderParametres(); toast('Liste supprimée');
+    }
+  });
+}
+function wipeStockList(){
+  ensureStockActiveList();
+  const list = state.stockLists.find(l=>l.id===stockActiveListId);
+  if(!list) return;
+  passwordConfirmModal({
+    title:'Suppression', confirmLabel:'Tout supprimer',
+    message:`Supprimer définitivement tous les articles de la liste « ${escapeHtml(list.nom)} » ? Cette action est irréversible.`,
+    onConfirm(){
+      state.stock = state.stock.filter(s=>s.listeId!==stockActiveListId);
+      persist(); closeModal(); toast('Liste « ' + list.nom + ' » vidée'); renderStock();
+    }
+  });
+}
+function openManageStockListsModal(){
+  openModal({
+    title: '🗂️ Gérer les listes de stock',
+    bodyHtml: `
+      <div style="display:flex;flex-direction:column;gap:8px;" id="stockListsManageRows">
+        ${state.stockLists.map(l=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;">
+            <div><b>${escapeHtml(l.nom)}</b><span style="color:var(--ink-soft);font-size:12px;margin-left:8px;">${itemsOfStockList(l.id).length} article(s)</span></div>
+            <div class="row-actions">
+              <button class="icon-btn" title="Renommer" onclick="closeModal(); openStockListForm('${l.id}')">✏️</button>
+              <button class="icon-btn danger" title="Supprimer" onclick="closeModal(); deleteStockList('${l.id}')">🗑️</button>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" data-cancel>Fermer</button>
+        <button type="button" class="btn btn-primary" id="btnManageAddStockList">➕ Nouvelle liste</button>
+      </div>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#btnManageAddStockList').addEventListener('click', ()=>{ closeModal(); openStockListForm(); });
+    }
+  });
 }
 
 /* ========================================================
@@ -2730,19 +3007,22 @@ function shoppingRowHtml(item){
     <button type="button" class="icon-btn danger" title="Retirer" data-remove-shop-row="${rid}" style="margin-bottom:1px;">🗑️</button>
   </div>`;
 }
-function openShoppingListModal(){
+function openShoppingListModal(listId){
+  listId = listId || ensureStockActiveList();
+  const list = state.stockLists.find(l=>l.id===listId);
+  const items = state.shoppingLists[listId] || (state.shoppingLists[listId] = []);
   openModal({
-    title: '📝 Liste des ingrédients à acheter',
+    title: '📝 Liste à acheter — ' + (list ? list.nom : ''),
     bodyHtml:`
       <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">
-        Modifiez librement les lignes, ajoutez-en, ou remplissez automatiquement avec les articles actuellement sous leur seuil d'alerte.
+        Cette liste de courses est propre à « ${escapeHtml(list?list.nom:'')} ». Modifiez librement les lignes, ajoutez-en, ou remplissez automatiquement avec les articles de cette liste actuellement sous leur seuil d'alerte.
         Le prix est le montant total pour la ligne (pas le prix unitaire).
       </p>
       <div class="form-actions" style="justify-content:flex-start;margin:0 0 12px;padding:0;border:none;">
         <button type="button" class="btn btn-soft btn-sm" id="btnAutoFillShopping">⚡ Ajouter les articles en alerte</button>
         <button type="button" class="btn btn-soft btn-sm" id="btnAddShoppingRow">➕ Ajouter une ligne</button>
       </div>
-      <div id="shoppingRows">${state.shoppingList.map(shoppingRowHtml).join('')}</div>
+      <div id="shoppingRows">${items.map(shoppingRowHtml).join('')}</div>
       <div style="display:flex;justify-content:flex-end;padding:10px 4px 0;border-top:1px solid var(--line-soft);margin-top:8px;">
         <div style="font-size:13.5px;">Total : <b class="mono" id="shoppingTotalDisplay" style="font-size:16px;">0 FCFA</b></div>
       </div>
@@ -2759,13 +3039,13 @@ function openShoppingListModal(){
         totalDisplay.textContent = fcfa(total);
       };
       rowsBox.addEventListener('input', (e)=>{ if(e.target.classList.contains('shop-calc')) recalcTotal(); });
-      overlay.querySelector('[data-cancel]').addEventListener('click', ()=>{ saveShoppingListFromForm(overlay); closeModal(); });
+      overlay.querySelector('[data-cancel]').addEventListener('click', ()=>{ saveShoppingListFromForm(overlay, listId); closeModal(); });
       overlay.querySelector('#btnAddShoppingRow').addEventListener('click', ()=>{
         rowsBox.insertAdjacentHTML('beforeend', shoppingRowHtml(null));
       });
       overlay.querySelector('#btnAutoFillShopping').addEventListener('click', ()=>{
         const existingNames = $$('[data-shop-row]', overlay).map(r=>r.querySelector('[data-role="nom"]').value.trim().toLowerCase());
-        const alerts = state.stock.filter(s=> Number(s.actuel) < Number(s.min) && !existingNames.includes(s.nom.toLowerCase()));
+        const alerts = itemsOfStockList(listId).filter(s=> Number(s.actuel) < Number(s.min) && !existingNames.includes(s.nom.toLowerCase()));
         if(!alerts.length){ toast('Aucun nouvel article en alerte à ajouter'); return; }
         alerts.forEach(s=>{
           rowsBox.insertAdjacentHTML('beforeend', shoppingRowHtml({ nom:s.nom, quantite: Math.max(s.min*2 - s.actuel, s.min), unite:s.unite, prix:'', note:'Sous le seuil d\'alerte' }));
@@ -2778,19 +3058,19 @@ function openShoppingListModal(){
         if(rm){ overlay.querySelector(`[data-shop-row="${rm.dataset.removeShopRow}"]`).remove(); recalcTotal(); }
       });
       overlay.querySelector('#btnClearShopping').addEventListener('click', ()=>{
-        confirmModal({ message:'Vider toute la liste d\'achats ?', onConfirm(){ rowsBox.innerHTML=''; state.shoppingList=[]; persist(); toast('Liste vidée'); recalcTotal(); } });
+        confirmModal({ message:'Vider cette liste d\'achats ?', onConfirm(){ rowsBox.innerHTML=''; state.shoppingLists[listId]=[]; persist(); toast('Liste vidée'); recalcTotal(); } });
       });
       overlay.querySelector('#btnSaveAndPrintShopping').addEventListener('click', ()=>{
-        saveShoppingListFromForm(overlay);
+        saveShoppingListFromForm(overlay, listId);
         closeModal();
-        printShoppingList();
+        printShoppingList(listId);
       });
       recalcTotal();
     }
   });
 }
-function saveShoppingListFromForm(overlay){
-  state.shoppingList = $$('[data-shop-row]', overlay).map(row=>({
+function saveShoppingListFromForm(overlay, listId){
+  state.shoppingLists[listId] = $$('[data-shop-row]', overlay).map(row=>({
     nom: row.querySelector('[data-role="nom"]').value.trim(),
     quantite: row.querySelector('[data-role="quantite"]').value,
     unite: row.querySelector('[data-role="unite"]').value.trim(),
@@ -2799,8 +3079,9 @@ function saveShoppingListFromForm(overlay){
   })).filter(i=>i.nom);
   persist();
 }
-function printShoppingList(){
-  const items = state.shoppingList;
+function printShoppingList(listId){
+  const list = state.stockLists.find(l=>l.id===listId);
+  const items = state.shoppingLists[listId] || [];
   const total = items.reduce((s,i)=> s + (Number(i.prix)||0), 0);
   const rows = items.map(i=>`<tr style="border-top:1px solid #EEF2EE;">
     <td style="padding:8px 6px;width:26px;"><span style="display:inline-block;width:16px;height:16px;border:2px solid #164F4C;border-radius:4px;"></span></td>
@@ -2809,9 +3090,10 @@ function printShoppingList(){
     <td style="padding:8px 6px;font-size:11.5px;color:#5C6E67;">${escapeHtml(i.note||'')}</td>
     <td style="padding:8px 6px;border-left:1px dashed #E2E8E3;text-align:right;font-size:13px;font-weight:700;">${i.prix?fmt(i.prix):''}</td>
   </tr>`).join('');
+  const title = 'Liste à acheter — ' + (list ? list.nom : '');
   const body = `
   <div style="width:420px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
-    ${printBrandHeader('Liste des ingrédients à acheter', 'linear-gradient(135deg,#2F8F63,#206B48)')}
+    ${printBrandHeader(title, 'linear-gradient(135deg,#2F8F63,#206B48)')}
     <div style="padding:18px 20px;background:#fff;">
       <div style="font-size:11px;color:#93A29B;margin-bottom:10px;">Établie le ${fmtDate(todayISO())} — cochez au fur et à mesure des achats.</div>
       <table style="width:100%;border-collapse:collapse;">
@@ -2832,7 +3114,7 @@ function printShoppingList(){
     </div>
     ${printBrandFooter()}
   </div>`;
-  openPrintWindow('Liste des ingrédients à acheter', body);
+  openPrintWindow(title, body);
 }
 
 /* ========================================================
@@ -2854,7 +3136,7 @@ function renderEmployes(){
   $('#employesTbody').innerHTML = rows.length ? rows.map(e => `
     <tr>
       <td class="name-cell"><div style="display:flex;align-items:center;gap:10px;">${employeeAvatarHtml(e)}<div><b>${escapeHtml(e.nom)}</b><span>${escapeHtml(e.telephone)}</span></div></div></td>
-      <td>${escapeHtml(e.poste)}</td>
+      <td>${escapeHtml(e.poste)}${e.estGestionnaire?' <span class="pill pill-gold" style="font-size:9.5px;">💼 Gestionnaire</span>':''}</td>
       <td>${restBadgeHtml(e.reposSlot)}</td>
       <td>${fmtDate(e.dateEmbauche)}</td>
       ${admin ? `<td class="num">${fmt(e.salaire)}</td>` : ''}
@@ -2895,6 +3177,11 @@ function openEmployeeForm(id, redirectAfter){
           ${admin?`<div class="field"><label>Niveau de responsabilité <span class="hint">(1–5, reflète le poste)</span></label><input type="number" min="1" max="5" name="niveauResponsabilite" value="${item?item.niveauResponsabilite:3}"></div>`:''}
           ${admin?`<div class="field"><label>Compétences <span class="hint">(1–5)</span></label><input type="number" min="1" max="5" name="competences" value="${item?item.competences:3}"></div>`:''}
           ${admin?`<div class="field"><label>Expérience <span class="hint">(années avant embauche ici)</span></label><input type="number" min="0" name="experienceAnnees" value="${item?item.experienceAnnees:0}"></div>`:''}
+          ${admin?`<div class="field full" style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--millet-tint);border-radius:10px;">
+            <input type="checkbox" id="empEstGestionnaire" name="estGestionnaire" ${item&&item.estGestionnaire?'checked':''} style="width:auto;">
+            <label for="empEstGestionnaire" style="margin:0;font-weight:600;">💼 Cet employé est gestionnaire (responsable) — touche une rémunération de gestion</label>
+          </div>`:''}
+          ${admin?`<div class="field" id="empPourcentageGestionField" style="display:${item&&item.estGestionnaire?'':'none'};"><label>% de rémunération de gestion <span class="hint">(sur la marge d'exploitation mensuelle)</span></label><input type="number" min="0" max="100" step="0.5" name="pourcentageGestion" value="${item?item.pourcentageGestion||0:2}"></div>`:''}
           <div class="field full"><label>Statut</label>
             <select name="statut"><option ${!item||item.statut==='Actif'?'selected':''}>Actif</option><option ${item&&item.statut==='Inactif'?'selected':''}>Inactif</option></select>
           </div>
@@ -2914,6 +3201,9 @@ function openEmployeeForm(id, redirectAfter){
         reader.onload = ()=>{ photoData = reader.result; preview.innerHTML = `<img src="${photoData}" style="width:100%;height:100%;object-fit:cover;">`; };
         reader.readAsDataURL(file);
       });
+      const gestCheckbox = overlay.querySelector('#empEstGestionnaire');
+      const gestField = overlay.querySelector('#empPourcentageGestionField');
+      if(gestCheckbox) gestCheckbox.addEventListener('change', ()=>{ gestField.style.display = gestCheckbox.checked ? '' : 'none'; });
       overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
       overlay.querySelector('#empForm').addEventListener('submit',(e)=>{
         e.preventDefault();
@@ -2925,11 +3215,15 @@ function openEmployeeForm(id, redirectAfter){
           payload.niveauResponsabilite = Number(f.get('niveauResponsabilite')||3);
           payload.competences = Number(f.get('competences')||3);
           payload.experienceAnnees = Number(f.get('experienceAnnees')||0);
+          payload.estGestionnaire = f.get('estGestionnaire') === 'on';
+          payload.pourcentageGestion = Number(f.get('pourcentageGestion')||0);
         } else if(item){
           payload.salaire = item.salaire; payload.niveauResponsabilite = item.niveauResponsabilite;
           payload.competences = item.competences; payload.experienceAnnees = item.experienceAnnees;
+          payload.estGestionnaire = item.estGestionnaire; payload.pourcentageGestion = item.pourcentageGestion;
         } else {
           payload.salaire = 0; payload.niveauResponsabilite = 3; payload.competences = 3; payload.experienceAnnees = 0;
+          payload.estGestionnaire = false; payload.pourcentageGestion = 0;
         }
         if(item){ Object.assign(item, payload); toast('Employé modifié'); }
         else { state.employees.push({id:uid('EMP'), ...payload}); toast(payload.nom + ' a été recruté(e) 🎉'); }
@@ -2966,7 +3260,8 @@ function viewEmployee(id){
       <div>Repos : ${restBadgeHtml(e.reposSlot)}</div>
       <div>Statut : ${e.statut==='Actif'?'<span class="pill pill-ok">Actif</span>':'<span class="pill pill-neutral">Inactif</span>'}</div>
       <div>Performance moyenne : <b class="mono">${perf}/100</b> <span style="color:var(--ink-soft);font-size:11.5px;">(${evals.length} évaluation${evals.length>1?'s':''})</span></div>
-      ${admin?`<div style="border-top:1px solid var(--line-soft);padding-top:10px;">Salaire mensuel : <b class="mono" style="font-size:16px;">${fcfa(e.salaire)}</b></div>
+      ${admin?`<div style="border-top:1px solid var(--line-soft);padding-top:10px;">Salaire de base mensuel : <b class="mono" style="font-size:16px;">${fcfa(e.salaire)}</b></div>
+      <div>Prime d'ancienneté : <b class="mono">${Math.round(primeAncienneteRate(e)*10)/10}%</b> <span style="color:var(--ink-soft);font-size:11px;">(${ancienneteJours(e.dateEmbauche)} jours d'ancienneté)</span></div>
       <div>Cycle de paie : ${paymentStatusBadge(e)} <span style="color:var(--ink-soft);font-size:11px;">depuis le ${fmtDate(cycleStartDate(e))}</span></div>`:''}
       <div class="form-actions" style="justify-content:flex-start;">
         <button class="btn btn-soft btn-sm" onclick="printEmployeeCard('${e.id}')">🪪 Imprimer la carte membre</button>
@@ -2979,7 +3274,7 @@ function viewEmployee(id){
         <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:180px;overflow-y:auto;">
           ${employeePayments(e.id).map(p=>`<div style="border:1px solid var(--line-soft);border-radius:10px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;">
             <div>
-              <div><b>${escapeHtml(p.periode)}</b> — ${fcfa(p.montant)}</div>
+              <div>${p.categorie==='Rémunération gestion'?'<span class="pill pill-gold">💼 Gestion</span> ':''}<b>${escapeHtml(p.periode)}</b> — ${fcfa(p.montant)}</div>
               <div style="font-size:11px;color:var(--ink-soft);">${fmtDate(p.date)} • ${escapeHtml(p.mode)}</div>
             </div>
             <div class="row-actions">
@@ -3012,6 +3307,15 @@ function anciennete(dateStr){
   return y + ' an(s)' + (m? ' ' + m + ' mois' : '');
 }
 function ancienneteJours(dateStr){ return daysAgo(dateStr); }
+
+/* Prime d'ancienneté : % du salaire de base, proportionnel aux années d'ancienneté (plafonné), réglable dans Paramètres.
+   Garantit que deux employés au même poste mais entrés à des dates différentes ne touchent pas le même montant. */
+function primeAncienneteRate(employee){
+  const parAn = Number(state.settings.primeAncienneteParAn)||0;
+  const max = Number(state.settings.primeAncienneteMax)||0;
+  const anneesAnciennete = ancienneteJours(employee.dateEmbauche) / 365;
+  return Math.min(anneesAnciennete * parAn, max);
+}
 
 /* ---------------- cycle de paie : 30 jours travaillés pour un paiement complet ---------------- */
 const CYCLE_PAIE_JOURS = 30;
@@ -3215,6 +3519,86 @@ function applySuggestedSalary(employeeId, montant){
     onConfirm(){
       const e = state.employees.find(e=>e.id===employeeId);
       if(e){ e.salaire = montant; persist(); toast('Salaire mis à jour'); closeModal(); if(document.getElementById('page-employes').classList.contains('active')) renderEmployes(); }
+    }
+  });
+}
+
+/* ========================================================
+   RÉMUNÉRATION DES GESTIONNAIRES — pourcentage de la marge d'exploitation mensuelle,
+   versé en plus du salaire de base aux employés désignés comme responsables/gestionnaires
+   ======================================================== */
+function openGestionRemunModal(){
+  const mKey = todayISO().slice(0,7);
+  const marge = monthlyMarge(mKey);
+  const moisLabel = new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  const gestionnaires = state.employees.filter(e=>e.estGestionnaire);
+  openModal({
+    title: '💼 Rémunération des gestionnaires',
+    bodyHtml:`
+      <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">
+        Calculée comme un <b>pourcentage de la marge d'exploitation</b> du mois en cours (${moisLabel.charAt(0).toUpperCase()+moisLabel.slice(1)} : <b>${fcfa(marge)}</b>),
+        versée en plus du salaire de base aux employés désignés comme gestionnaires/responsables.
+        ${marge<=0?'<br><b style="color:var(--bissap-dark);">⚠️ La marge du mois est nulle ou négative — aucune rémunération de gestion n\'est due pour l\'instant.</b>':''}
+      </p>
+      <div class="table-wrap" style="margin-top:12px;">
+        <table class="data-table">
+          <thead><tr><th>Gestionnaire</th><th>Poste</th><th>% gestion</th><th>Montant calculé</th><th>Statut</th><th></th></tr></thead>
+          <tbody>
+            ${gestionnaires.length ? gestionnaires.map(e=>{
+              const montant = Math.max(0, Math.round(marge * (Number(e.pourcentageGestion)||0) / 100));
+              return `<tr>
+                <td><b>${escapeHtml(e.nom)}</b></td>
+                <td>${escapeHtml(e.poste)}</td>
+                <td class="num">${e.pourcentageGestion||0}%</td>
+                <td class="num"><b>${fcfa(montant)}</b></td>
+                <td>${e.statut==='Actif'?'<span class="pill pill-ok">Actif</span>':'<span class="pill pill-neutral">Inactif</span>'}</td>
+                <td class="actions"><button class="btn btn-soft btn-sm" ${montant<=0?'disabled':''} onclick="openGestionPaymentForm('${e.id}', ${montant})">💼 Verser</button></td>
+              </tr>`;
+            }).join('') : `<tr class="empty-row"><td colspan="6">Aucun employé désigné comme gestionnaire pour le moment. Cochez « Est gestionnaire » sur sa fiche pour l'ajouter ici.</td></tr>`}
+          </tbody>
+        </table>
+      </div>`,
+  });
+}
+function openGestionPaymentForm(employeeId, montantSuggere){
+  const e = state.employees.find(e=>e.id===employeeId);
+  if(!e) return;
+  const moisActuel = new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+  openModal({
+    title: '💼 Verser la rémunération de gestion — ' + e.nom,
+    bodyHtml:`
+      <p style="font-size:12px;color:var(--leaf-dark);background:var(--leaf-tint);padding:8px 10px;border-radius:8px;line-height:1.5;">
+        Calculé sur ${e.pourcentageGestion||0}% de la marge d'exploitation du mois en cours. Vous pouvez ajuster le montant avant d'enregistrer.
+      </p>
+      <form id="gestionPaymentForm">
+        <div class="form-grid">
+          <div class="field full"><label>Période</label><input required name="periode" value="${moisActuel.charAt(0).toUpperCase()+moisActuel.slice(1)}"></div>
+          <div class="field"><label>Montant (FCFA)</label><input required type="number" min="0" name="montant" value="${montantSuggere}"></div>
+          <div class="field"><label>Date de paiement</label><input required type="date" name="date" value="${todayISO()}"></div>
+          <div class="field full"><label>Mode de paiement</label>
+            <select name="mode"><option>Espèces</option><option>Mobile Money</option><option>Virement bancaire</option><option>Chèque</option></select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">💼 Enregistrer &amp; imprimer la fiche</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#gestionPaymentForm').addEventListener('submit',(ev)=>{
+        ev.preventDefault();
+        const f = new FormData(ev.target);
+        const payment = {
+          id: uid('PAY'), employeeId, periode: f.get('periode').trim(), montant: Number(f.get('montant')),
+          date: f.get('date'), mode: f.get('mode'), payePar: currentUser.nom, categorie: 'Rémunération gestion',
+        };
+        state.salaryPayments.push(payment);
+        persist(); closeModal();
+        toast('Rémunération de gestion enregistrée pour ' + e.nom);
+        printPayslip(payment.id);
+        if(document.getElementById('page-employes').classList.contains('active')) renderEmployes();
+      });
     }
   });
 }
@@ -3848,7 +4232,11 @@ function openPaymentForm(employeeId){
   if(!e) return;
   const moisActuel = new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
   const jours = joursDepuisCycle(e);
-  const montantProrata = Math.round((Number(e.salaire)||0) / CYCLE_PAIE_JOURS * jours);
+  const montantBaseProrata = Math.round((Number(e.salaire)||0) / CYCLE_PAIE_JOURS * jours);
+  const ancJours = ancienneteJours(e.dateEmbauche);
+  const primeRate = primeAncienneteRate(e);
+  const primeMontant = Math.round(montantBaseProrata * primeRate / 100);
+  const montantSuggere = montantBaseProrata + primeMontant;
   const estAbandon = e.statut === 'Inactif';
   const estComplet = jours >= CYCLE_PAIE_JOURS;
   const noteCycle = estAbandon
@@ -3860,10 +4248,16 @@ function openPaymentForm(employeeId){
     title: 'Payer le salaire — ' + e.nom,
     bodyHtml:`
       <p style="font-size:12px;color:${estAbandon||!estComplet?'var(--bissap-dark)':'var(--leaf-dark)'};background:${estAbandon||!estComplet?'var(--bissap-tint)':'var(--leaf-tint)'};padding:8px 10px;border-radius:8px;line-height:1.5;">${noteCycle}</p>
+      <div style="font-size:12px;background:var(--line-soft);border-radius:8px;padding:10px 12px;margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+        <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:.04em;">Détail transparent du calcul</div>
+        <div style="display:flex;justify-content:space-between;"><span>Salaire de base (${jours}j / ${CYCLE_PAIE_JOURS}j)</span><b>${fmt(montantBaseProrata)}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté (${ancJours} j, soit ${Math.round(primeRate*10)/10}%)</span><b>${fmt(primeMontant)}</b></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:4px;margin-top:2px;"><span style="font-weight:700;">Total suggéré</span><b>${fmt(montantSuggere)}</b></div>
+      </div>
       <form id="paymentForm">
         <div class="form-grid">
           <div class="field full"><label>Période</label><input required name="periode" value="${moisActuel.charAt(0).toUpperCase()+moisActuel.slice(1)}" placeholder="Ex : Septembre 2026"></div>
-          <div class="field"><label>Montant payé (FCFA) <span class="hint">(${jours}j au prorata : ${fmt(montantProrata)})</span></label><input required type="number" min="0" name="montant" value="${estComplet && !estAbandon ? e.salaire : montantProrata}"></div>
+          <div class="field"><label>Montant payé (FCFA)</label><input required type="number" min="0" name="montant" value="${montantSuggere}"></div>
           <div class="field"><label>Date de paiement</label><input required type="date" name="date" value="${todayISO()}"></div>
           <div class="field full"><label>Mode de paiement</label>
             <select name="mode"><option>Espèces</option><option>Mobile Money</option><option>Virement bancaire</option><option>Chèque</option></select>
@@ -3881,7 +4275,8 @@ function openPaymentForm(employeeId){
         const f = new FormData(ev.target);
         const payment = {
           id: uid('PAY'), employeeId, periode: f.get('periode').trim(), montant: Number(f.get('montant')),
-          date: f.get('date'), mode: f.get('mode'), payePar: currentUser.nom,
+          date: f.get('date'), mode: f.get('mode'), payePar: currentUser.nom, categorie: 'Salaire',
+          salaireBase: montantBaseProrata, primeAncienneteTaux: Math.round(primeRate*10)/10, primeAncienneteMontant: primeMontant, joursTravailles: jours,
         };
         state.salaryPayments.push(payment);
         persist(); closeModal();
@@ -3904,9 +4299,10 @@ function printPayslip(paymentId){
   if(!e) return;
   const photoHtml = e.photo ? `<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover;">` :
     `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;font-family:'Fraunces',serif;background:#DD9A2B;">${escapeHtml((e.nom||'?')[0])}</div>`;
+  const estGestion = p.categorie === 'Rémunération gestion';
   const body = `
   <div style="width:420px;margin:0 auto;border-radius:20px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.15);border:1px solid #E2E8E3;">
-    ${printBrandHeader('Fiche de Paie', 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
+    ${printBrandHeader(estGestion?'Fiche de Rémunération — Gestion':'Fiche de Paie', 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
     <div style="padding:20px 22px;background:#fff;">
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
         <div style="width:56px;height:56px;border-radius:12px;overflow:hidden;flex-shrink:0;">${photoHtml}</div>
@@ -3917,10 +4313,17 @@ function printPayslip(paymentId){
       </div>
       <div style="border-top:1px dashed #E2E8E3;padding-top:12px;display:flex;flex-direction:column;gap:8px;font-size:12.5px;">
         <div style="display:flex;justify-content:space-between;"><span style="color:#5C6E67;">Numéro de fiche</span><b>${escapeHtml(p.id)}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#5C6E67;">Type</span><b>${estGestion?'💼 Rémunération de gestion':'Salaire'}</b></div>
         <div style="display:flex;justify-content:space-between;"><span style="color:#5C6E67;">Période</span><b>${escapeHtml(p.periode)}</b></div>
         <div style="display:flex;justify-content:space-between;"><span style="color:#5C6E67;">Date de paiement</span><b>${fmtDate(p.date)}</b></div>
         <div style="display:flex;justify-content:space-between;"><span style="color:#5C6E67;">Mode de paiement</span><b>${escapeHtml(p.mode)}</b></div>
       </div>
+      ${(!estGestion && p.salaireBase!==undefined) ? `
+      <div style="margin-top:12px;background:#F3F6F3;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;font-size:12px;">
+        <div style="font-weight:700;font-size:10px;text-transform:uppercase;color:#5C6E67;letter-spacing:.04em;">Détail du calcul (transparence)</div>
+        <div style="display:flex;justify-content:space-between;"><span>Salaire de base (${p.joursTravailles||0}j travaillés)</span><b>${fmt(p.salaireBase)}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté (${p.primeAncienneteTaux||0}%)</span><b>${fmt(p.primeAncienneteMontant||0)}</b></div>
+      </div>` : ''}
       <div style="margin-top:16px;padding:14px 16px;background:#E1F3EA;border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:12.5px;color:#206B48;font-weight:700;">Montant net payé</span>
         <span class="mono" style="font-size:20px;font-weight:700;color:#206B48;">${fcfa(p.montant)}</span>
@@ -4205,6 +4608,8 @@ function renderParametres(){
   $('#settingsVille').value = state.settings.ville;
   $('#settingsDevise').value = state.settings.devise;
   $('#settingsCongeCycle').value = state.settings.congeCycleStart || '2026-08-01';
+  $('#settingsPrimeParAn').value = state.settings.primeAncienneteParAn;
+  $('#settingsPrimeMax').value = state.settings.primeAncienneteMax;
   $('#restGroupsCountDisplay').textContent = restGroupsCount() + ' groupe(s) — ' + restCycleDays() + ' jours de cycle';
   $('#restGroupsListPreview').innerHTML = Array.from({length:restGroupsCount()},(_,i)=>i+1).map(s=>{
     const r = restSlotRange(s);
@@ -4229,6 +4634,8 @@ function saveSettings(e){
   state.settings.ville = $('#settingsVille').value.trim();
   state.settings.devise = $('#settingsDevise').value.trim() || 'FCFA';
   state.settings.congeCycleStart = $('#settingsCongeCycle').value || state.settings.congeCycleStart;
+  state.settings.primeAncienneteParAn = Number($('#settingsPrimeParAn').value) || 0;
+  state.settings.primeAncienneteMax = Number($('#settingsPrimeMax').value) || 0;
   persist(); applyBranding(); toast('Paramètres enregistrés');
 }
 
@@ -4416,7 +4823,7 @@ async function init(){
 
   // Menu / Plats
   $('#btnAddProduct').addEventListener('click', ()=>openProductForm());
-  $('#menuSearch').addEventListener('input', (e)=>{ menuFilter.q=e.target.value; renderMenu(); });
+  $('#menuSearch').addEventListener('input', debounce((e)=>{ menuFilter.q=e.target.value; renderMenu(); }));
   $('#menuPeriodeFilter').addEventListener('change', (e)=>{ menuFilter.periode=e.target.value; renderMenu(); });
 
   // Achats
@@ -4424,35 +4831,39 @@ async function init(){
   $('#btnAddPurchase').addEventListener('click', ()=>openPurchaseForm());
   $('#btnPrintDailyPurchases').addEventListener('click', printDailyPurchases);
   $('#btnAddExpense').addEventListener('click', ()=>openExpenseForm());
-  $('#achatsSearch').addEventListener('input', (e)=>{ achatsFilter.q=e.target.value; renderAchats(); });
+  $('#achatsSearch').addEventListener('input', debounce((e)=>{ achatsFilter.q=e.target.value; renderAchats(); }));
   $('#achatsCatFilter').addEventListener('change', (e)=>{ achatsFilter.cat=e.target.value; renderAchatsTable(); });
-  $('#depensesSearch').addEventListener('input', (e)=>{ achatsFilter.q=e.target.value; renderDepensesTable(); });
+  $('#depensesSearch').addEventListener('input', debounce((e)=>{ achatsFilter.q=e.target.value; renderDepensesTable(); }));
   $('#btnWipeAchats').addEventListener('click', ()=>wipeModule('purchases','Achats'));
   $('#btnWipeDepenses').addEventListener('click', ()=>wipeModule('expenses','Dépenses'));
 
   // Fournisseurs
   $('#btnAddSupplier').addEventListener('click', ()=>openSupplierForm());
-  $('#supplierSearch').addEventListener('input', (e)=>{ supplierFilter.q=e.target.value; renderFournisseurs(); });
+  $('#supplierSearch').addEventListener('input', debounce((e)=>{ supplierFilter.q=e.target.value; renderFournisseurs(); }));
 
   // Ventes
   $('#btnAddSale').addEventListener('click', ()=>openSaleForm());
   $('#btnPrintSalesByDay').addEventListener('click', printSalesByDay);
-  $('#ventesSearch').addEventListener('input', (e)=>{ ventesFilter.q=e.target.value; renderVentes(); });
+  $('#ventesSearch').addEventListener('input', debounce((e)=>{ ventesFilter.q=e.target.value; renderVentes(); }));
   $('#ventesPaiementFilter').addEventListener('change', (e)=>{ ventesFilter.paiement=e.target.value; renderVentes(); });
   $('#btnWipeVentes').addEventListener('click', ()=>wipeModule('sales','Ventes'));
   $('#btnExportVentes').addEventListener('click', exportVentesCSV);
 
   // Stock
-  $('#btnShoppingList').addEventListener('click', openShoppingListModal);
+  $('#btnShoppingList').addEventListener('click', ()=>openShoppingListModal(stockActiveListId));
   $('#btnAddStock').addEventListener('click', ()=>openStockForm());
-  $('#stockSearch').addEventListener('input', (e)=>{ stockFilter.q=e.target.value; renderStock(); });
+  $('#stockSearch').addEventListener('input', debounce((e)=>{ stockFilter.q=e.target.value; renderStock(); }));
   $('#stockStatusFilter').addEventListener('change', (e)=>{ stockFilter.status=e.target.value; renderStock(); });
-  $('#btnWipeStock').addEventListener('click', ()=>wipeModule('stock','Stock'));
+  $('#btnWipeStock').addEventListener('click', wipeStockList);
+  $('#stockListTabs').addEventListener('click', (e)=>{ const b=e.target.closest('button[data-list]'); if(!b) return; stockActiveListId=b.dataset.list; renderStock(); });
+  $('#btnAddStockList').addEventListener('click', ()=>openStockListForm());
+  $('#btnManageStockLists').addEventListener('click', openManageStockListsModal);
 
   // Employés
   $('#btnAddEmployee').addEventListener('click', ()=>openEmployeeForm());
   $('#btnSalaryCalc').addEventListener('click', openSalaryCalcModal);
-  $('#employesSearch').addEventListener('input', (e)=>{ employesFilter.q=e.target.value; renderEmployes(); });
+  $('#btnGestionRemun').addEventListener('click', openGestionRemunModal);
+  $('#employesSearch').addEventListener('input', debounce((e)=>{ employesFilter.q=e.target.value; renderEmployes(); }));
   $('#employesStatutFilter').addEventListener('change', (e)=>{ employesFilter.statut=e.target.value; renderEmployes(); });
   $('#btnWipeEmployes').addEventListener('click', ()=>wipeModule('employees','Employés'));
 
@@ -4483,14 +4894,14 @@ async function init(){
 
   // Trésorerie
   $('#btnAddMovement').addEventListener('click', ()=>openMovementForm());
-  $('#tresoSearch').addEventListener('input', (e)=>{ tresoFilter.q=e.target.value; renderTresoTable(); });
+  $('#tresoSearch').addEventListener('input', debounce((e)=>{ tresoFilter.q=e.target.value; renderTresoTable(); }));
   $('#tresoTypeFilter').addEventListener('change', (e)=>{ tresoFilter.type=e.target.value; renderTresoTable(); });
   $('#tresoModeFilter').addEventListener('change', (e)=>{ tresoFilter.mode=e.target.value; renderTresoTable(); });
   $('#btnWipeTreso').addEventListener('click', ()=>wipeModule('treasuryMovements','Mouvements de trésorerie'));
 
   // Abonnements
   $('#btnAddSubscription').addEventListener('click', ()=>openSubscriptionForm());
-  $('#subsSearch').addEventListener('input', (e)=>{ subsFilter.q=e.target.value; renderAbonnements(); });
+  $('#subsSearch').addEventListener('input', debounce((e)=>{ subsFilter.q=e.target.value; renderAbonnements(); }));
   $('#subsTypeFilter').addEventListener('change', (e)=>{ subsFilter.type=e.target.value; renderAbonnements(); });
   $('#subsStatutFilter').addEventListener('change', (e)=>{ subsFilter.statut=e.target.value; renderAbonnements(); });
   $('#btnWipeSubs').addEventListener('click', ()=>wipeModule('subscriptions','Abonnements'));
