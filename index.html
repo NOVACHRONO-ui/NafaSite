@@ -243,6 +243,7 @@ a{color:inherit;}
 .pill-warn{background:var(--bissap-tint);color:var(--bissap-dark);}
 .pill-neutral{background:var(--line-soft);color:var(--ink-soft);}
 .pill-gold{background:var(--millet-tint);color:var(--millet-dark);}
+.pill-danger{background:var(--bissap);color:#fff;}
 
 /* ---------- toolbar / filters ---------- */
 .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;}
@@ -744,7 +745,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Employé</th><th>Poste</th><th>Repos</th><th>Embauche</th><th data-roles="admin">Salaire</th><th data-roles="admin">Cycle de paie</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Employé</th><th>Poste</th><th>Repos</th><th>Embauche</th><th data-roles="admin">Salaire</th><th data-roles="admin">Cycle de paie</th><th data-roles="admin">Gagné à ce jour</th><th>Statut</th><th></th></tr></thead>
             <tbody id="employesTbody"></tbody>
           </table>
         </div>
@@ -859,8 +860,26 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
             <button class="btn btn-primary" id="btnAddSubscription">➕ Nouvel abonné</button>
           </div>
         </div>
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-head">
+            <div><h3>🛡️ Contrôle du crédit « Nafa Fin de Mois »</h3><div class="desc">Le nombre de clients à crédit ne doit jamais être déterminé par la demande, mais par la capacité financière du restaurant.</div></div>
+            <button class="btn btn-soft btn-sm" id="btnCreditSettings" data-roles="admin">⚙️ Régler les plafonds</button>
+          </div>
+          <div class="panel-body">
+            <div class="kpi-grid" id="creditKpis" style="grid-template-columns:repeat(4,1fr);margin-bottom:0;"></div>
+          </div>
+        </div>
         <div class="toolbar">
           <div class="search-box"><span class="ic">🔎</span><input id="subsSearch" placeholder="Rechercher un nom, une entreprise, un téléphone…"></div>
+          <select class="select-filter" id="subsFormuleFilter">
+            <option value="">Toutes formules</option>
+            <option value="abonnement">🎟️ Abonnement</option>
+            <option value="prepaye">💰 Prépayé</option>
+            <option value="fidelite">🎁 Prépayé Fidélité</option>
+            <option value="credit">🧾 Fin de mois — Crédit</option>
+            <option value="sejour">🏨 Séjour</option>
+            <option value="legacy">📁 Ancien format</option>
+          </select>
           <select class="select-filter" id="subsTypeFilter">
             <option value="">Tous types</option>
             <option value="particulier">👤 Particulier</option>
@@ -869,7 +888,9 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
           <select class="select-filter" id="subsStatutFilter">
             <option value="">Tous statuts</option>
             <option value="actif">✅ Actif</option>
-            <option value="expire">⚠️ Expiré</option>
+            <option value="retard">⏳ En retard</option>
+            <option value="impaye">❌ Impayé</option>
+            <option value="expire">⚠️ Expiré / épuisé</option>
           </select>
           <span class="pill pill-neutral" id="subsTotalTag"></span>
           <div class="spacer"></div>
@@ -877,7 +898,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Type</th><th>Nom / Entreprise</th><th>Contact</th><th>Abonnement</th><th>Montant</th><th>Validité</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>Formule</th><th>Nom / Entreprise</th><th>Contact</th><th>Solde / Échéance</th><th>Montant</th><th>Validité</th><th>Statut</th><th></th></tr></thead>
             <tbody id="subsTbody"></tbody>
           </table>
         </div>
@@ -969,6 +990,12 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
                   <div class="field"><label>Référence du cycle de repos <span class="hint">(Jour 1 de la rotation A→G)</span></label><input type="date" id="settingsCongeCycle" name="congeCycleStart"></div>
                   <div class="field"><label>Prime d'ancienneté <span class="hint">(% par année d'ancienneté)</span></label><input type="number" min="0" step="0.1" id="settingsPrimeParAn" name="primeAncienneteParAn"></div>
                   <div class="field"><label>Prime d'ancienneté — plafond <span class="hint">(% maximum, quelle que soit l'ancienneté)</span></label><input type="number" min="0" step="1" id="settingsPrimeMax" name="primeAncienneteMax"></div>
+                  <div class="field"><label>Jours de référence pour le salaire <span class="hint">Salaire à payer = Salaire mensuel × (jours travaillés / jours de référence)</span></label><input type="number" min="1" step="1" id="settingsJoursReference" name="joursReferenceSalaire"></div>
+                  <div class="field"><label>Masse salariale liée au CA <span class="hint">(% du CA du mois réparti entre les employés actifs)</span></label><input type="number" min="1" max="100" step="0.5" id="settingsTauxMasse" name="tauxMasseSalariale"></div>
+                  <div class="field"><label>Base du salaire mensuel <span class="hint">(proposée par défaut à chaque paiement)</span></label>
+                    <select id="settingsSalaireMode" name="salaireBaseMode"><option value="fixe">Salaire fixe de l'employé</option><option value="ca">Part du CA (masse salariale)</option><option value="mixte">Mixte : fixe garanti + prime liée au CA</option></select></div>
+                  <div class="field"><label>Part du salaire fixe garantie <span class="hint">(% du salaire fixe assuré quel que soit le CA — mode mixte)</span></label><input type="number" min="0" max="100" step="1" id="settingsPartFixe" name="partFixeGarantiePct"></div>
+                  <div class="field"><label>Salaire minimum garanti <span class="hint">(FCFA / mois — plancher légal, mode mixte)</span></label><input type="number" min="0" step="500" id="settingsSalaireMin" name="salaireMinimum"></div>
                 </div>
                 <div class="form-actions"><button type="submit" class="btn btn-primary">Enregistrer les paramètres</button></div>
               </form>
@@ -1166,6 +1193,7 @@ function showLogin(){
 }
 
 function parseDate(d){ return new Date(d + 'T00:00:00'); }
+function addDaysISO(dateStr, n){ const d = parseDate(dateStr); d.setDate(d.getDate()+Number(n||0)); return d.toISOString().slice(0,10); }
 function daysAgo(dateStr){
   const d = parseDate(dateStr);
   const now = new Date(); now.setHours(0,0,0,0);
@@ -1181,7 +1209,8 @@ function monthKey(dateStr){ return dateStr.slice(0,7); }
 function seedState(){
   const demoSupplierId = uid('SUP');
   return {
-    settings: { nom: "Chez Awa — Restaurant Sénégalais", ville: "Touba, Sénégal", devise: "FCFA", congeCycleStart: '2026-08-01', restGroupsCount: 7, primeAncienneteParAn: 1, primeAncienneteMax: 20 },
+    settings: { nom: "Chez Awa — Restaurant Sénégalais", ville: "Touba, Sénégal", devise: "FCFA", congeCycleStart: '2026-08-01', restGroupsCount: 7, primeAncienneteParAn: 1, primeAncienneteMax: 20, joursReferenceSalaire: 30, tauxMasseSalariale: 21, salaireBaseMode: 'mixte', salaireMixteMigre: true, partFixeGarantiePct: 75, salaireMinimum: 0,
+      credit: { quotaMax: 10, plafondGlobal: 100000, plafondParNiveau: {0:0, 1:10000, 2:20000, 3:30000} } },
     users: [
       {id:'admin', username:'admin', nom:'Administrateur Principal', role:'admin', passwordHash:'6051fc84a7a0d74c225fb18a496b09952da5642e60723ecae543298edd7d82d6'},
       {id:'caissiere', username:'caissiere', nom:'Caissière', role:'cashier', passwordHash:'4b81c545381a471db3e6d604be20b8755f5c43b77faad7d5aac820f9dc45e340'},
@@ -1271,8 +1300,8 @@ function seedState(){
       {id:'stk-sacs', nom:'Sacs / emballages', categorie:'Consommable', unite:'unité', actuel:200, min:100, derniereEntree:'2026-08-12', listeId:'sl-principal'},
     ],
     subscriptions: [
-      {id:uid('SUB'), type:'particulier', nom:'Cheikh Ndoye', telephone:'77 987 65 43', adresse:'', contact:'', montant:15000, dateDebut:'2026-08-01', dateExpiration:'2026-08-31', typeAbonnement:'Mensuel Déjeuner'},
-      {id:uid('SUB'), type:'entreprise', nom:'SenTech SARL', telephone:'33 800 12 12', adresse:'Sacré-Cœur 3, Dakar', contact:'Mme Diagne', montant:250000, dateDebut:'2026-08-01', dateExpiration:'2026-08-31', typeAbonnement:'Pack Entreprise 20 repas'},
+      {id:uid('SUB'), formule:'legacy', type:'particulier', nom:'Cheikh Ndoye', telephone:'77 987 65 43', adresse:'', contact:'', montant:15000, dateDebut:'2026-08-01', dateExpiration:'2026-08-31', typeAbonnement:'Mensuel Déjeuner'},
+      {id:uid('SUB'), formule:'legacy', type:'entreprise', nom:'SenTech SARL', telephone:'33 800 12 12', adresse:'Sacré-Cœur 3, Dakar', contact:'Mme Diagne', montant:250000, dateDebut:'2026-08-01', dateExpiration:'2026-08-31', typeAbonnement:'Pack Entreprise 20 repas'},
     ],
     employees: [
       {id:uid('EMP'), nom:'Moussa Diop', poste:'Chef cuisinier', telephone:'77 123 45 67', dateEmbauche:'2023-03-01', salaire:180000, statut:'Actif', reposSlot:1, niveauResponsabilite:5, competences:5, experienceAnnees:8, estGestionnaire:true, pourcentageGestion:3},
@@ -1342,6 +1371,21 @@ function ensureDataIntegrity(){
   if(state.settings && !state.settings.congeCycleStart){ state.settings.congeCycleStart = '2026-08-01'; changed = true; }
   if(state.settings && state.settings.primeAncienneteParAn === undefined){ state.settings.primeAncienneteParAn = 1; changed = true; }
   if(state.settings && state.settings.primeAncienneteMax === undefined){ state.settings.primeAncienneteMax = 20; changed = true; }
+  if(state.settings && !state.settings.joursReferenceSalaire){ state.settings.joursReferenceSalaire = 30; changed = true; }
+  if(state.settings && !(Number(state.settings.tauxMasseSalariale) > 0)){ state.settings.tauxMasseSalariale = 21; changed = true; }
+  if(state.settings && !['fixe','ca','mixte'].includes(state.settings.salaireBaseMode)){ state.settings.salaireBaseMode = 'mixte'; changed = true; }
+  // Passage unique au salaire mixte (fixe garanti + prime variable liée au CA) comme base par défaut
+  if(state.settings && !state.settings.salaireMixteMigre){ state.settings.salaireBaseMode = 'mixte'; state.settings.salaireMixteMigre = true; changed = true; }
+  if(state.settings && !(Number(state.settings.partFixeGarantiePct) >= 0 && state.settings.partFixeGarantiePct !== '' && state.settings.partFixeGarantiePct !== null && state.settings.partFixeGarantiePct !== undefined)){ state.settings.partFixeGarantiePct = 75; changed = true; }
+  if(state.settings && !(Number(state.settings.salaireMinimum) >= 0) ){ state.settings.salaireMinimum = 0; changed = true; }
+  // Système de crédit « Nafa Fin de Mois » : quotas et plafonds par niveau de fiabilité
+  if(state.settings && !state.settings.credit){
+    state.settings.credit = { quotaMax: 10, plafondGlobal: 100000, plafondParNiveau: {0:0, 1:10000, 2:20000, 3:30000} };
+    changed = true;
+  }
+  // Anciens abonnements enregistrés avant l'introduction des 5 formules Nafa : on les marque
+  // « legacy » pour préserver leur affichage d'origine (aucune donnée perdue).
+  (state.subscriptions||[]).forEach(s=>{ if(!s.formule){ s.formule = 'legacy'; changed = true; } });
   if(state.settings && !state.settings.restGroupsCount){ state.settings.restGroupsCount = 7; changed = true; }
   // Anciennes données enregistrées avant l'ajout des listes de stock multiples : on crée une liste
   // par défaut et on y rattache tous les articles déjà existants, sans rien perdre.
@@ -1382,7 +1426,11 @@ function persist(immediate=false){
     clearTimeout(saveTimer);
     const doSave = () => {
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-      catch(e){ console.error('Erreur de sauvegarde', e); toast('Erreur de sauvegarde des données', 'error'); }
+      catch(e){
+        console.error('Erreur de sauvegarde', e);
+        const plein = e && (e.name==='QuotaExceededError' || e.code===22);
+        toast(plein ? 'Espace de stockage plein : retirez des photos ou exportez vos données' : 'Erreur de sauvegarde des données', 'error');
+      }
       saveTimer = null;
       resolve();
     };
@@ -3133,7 +3181,8 @@ function renderEmployes(){
     .sort((a,b)=> a.nom.localeCompare(b.nom));
   $('#employesTotalTag').textContent = rows.length + ' employé(s) • ' + activeEmployees().length + ' actif(s)';
   const admin = isAdmin();
-  $('#employesTbody').innerHTML = rows.length ? rows.map(e => `
+  const ctx = admin ? salaryContext() : null; // calculé une seule fois pour tout le tableau
+  $('#employesTbody').innerHTML = rows.length ? rows.map(e => { const ac = admin ? employeeAccrual(e, ctx) : null; return `
     <tr>
       <td class="name-cell"><div style="display:flex;align-items:center;gap:10px;">${employeeAvatarHtml(e)}<div><b>${escapeHtml(e.nom)}</b><span>${escapeHtml(e.telephone)}</span></div></div></td>
       <td>${escapeHtml(e.poste)}${e.estGestionnaire?' <span class="pill pill-gold" style="font-size:9.5px;">💼 Gestionnaire</span>':''}</td>
@@ -3141,6 +3190,7 @@ function renderEmployes(){
       <td>${fmtDate(e.dateEmbauche)}</td>
       ${admin ? `<td class="num">${fmt(e.salaire)}</td>` : ''}
       ${admin ? `<td>${paymentStatusBadge(e)}</td>` : ''}
+      ${admin ? `<td class="num"><b>${fmt(ac.total)}</b> F<br><span style="font-size:10.5px;color:var(--ink-soft);">${ac.jours} j × ${fmt(ac.parJour)} F/j</span></td>` : ''}
       <td>${e.statut==='Actif'?'<span class="pill pill-ok">Actif</span>':'<span class="pill pill-neutral">Inactif</span>'}</td>
       <td class="actions"><div class="row-actions">
         <button class="icon-btn" title="Détails" onclick="viewEmployee('${e.id}')">👁️</button>
@@ -3150,7 +3200,7 @@ function renderEmployes(){
         <button class="icon-btn" title="Modifier" onclick="openEmployeeForm('${e.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteEmployee('${e.id}')">🗑️</button>` : ''}
       </div></td>
-    </tr>`).join('') : `<tr class="empty-row"><td colspan="8">Aucun employé trouvé.</td></tr>`;
+    </tr>`; }).join('') : `<tr class="empty-row"><td colspan="9">Aucun employé trouvé.</td></tr>`;
 }
 
 function openEmployeeForm(id, redirectAfter){
@@ -3262,7 +3312,13 @@ function viewEmployee(id){
       <div>Performance moyenne : <b class="mono">${perf}/100</b> <span style="color:var(--ink-soft);font-size:11.5px;">(${evals.length} évaluation${evals.length>1?'s':''})</span></div>
       ${admin?`<div style="border-top:1px solid var(--line-soft);padding-top:10px;">Salaire de base mensuel : <b class="mono" style="font-size:16px;">${fcfa(e.salaire)}</b></div>
       <div>Prime d'ancienneté : <b class="mono">${Math.round(primeAncienneteRate(e)*10)/10}%</b> <span style="color:var(--ink-soft);font-size:11px;">(${ancienneteJours(e.dateEmbauche)} jours d'ancienneté)</span></div>
-      <div>Cycle de paie : ${paymentStatusBadge(e)} <span style="color:var(--ink-soft);font-size:11px;">depuis le ${fmtDate(cycleStartDate(e))}</span></div>`:''}
+      <div>Cycle de paie : ${paymentStatusBadge(e)} <span style="color:var(--ink-soft);font-size:11px;">depuis le ${fmtDate(cycleStartDate(e))}</span></div>
+      ${(()=>{ const ac = employeeAccrual(e); return `<div style="background:var(--leaf-tint);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--leaf-dark);font-weight:700;">Gagné depuis le dernier paiement</div>
+        <div class="mono" style="font-size:20px;font-weight:700;color:var(--leaf-dark);">${fcfa(ac.total)}</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);">${ac.jours} jour(s) travaillé(s) × ${fmt(ac.parJour)} F/jour${ac.prime?` + prime d'ancienneté ${fmt(ac.prime)} F`:''} — le montant augmente chaque jour.</div>
+        <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Déjà payé au total (salaires) : <b>${fcfa(totalDejaPaye(e.id))}</b></div>
+      </div>`; })()}`:''}
       <div class="form-actions" style="justify-content:flex-start;">
         <button class="btn btn-soft btn-sm" onclick="printEmployeeCard('${e.id}')">🪪 Imprimer la carte membre</button>
         <button class="btn btn-soft btn-sm" onclick="openEvaluationForm('${e.id}')">📝 Nouvelle évaluation</button>
@@ -3317,10 +3373,13 @@ function primeAncienneteRate(employee){
   return Math.min(anneesAnciennete * parAn, max);
 }
 
-/* ---------------- cycle de paie : 30 jours travaillés pour un paiement complet ---------------- */
-const CYCLE_PAIE_JOURS = 30;
+/* Jours de référence pour le calcul du salaire au prorata (réglable dans Paramètres, 30 jours par défaut).
+   Sert aussi de cycle de paie : au bout de ce nombre de jours travaillés, un paiement complet est dû.
+   Formule : Salaire à payer = Salaire mensuel × (Nombre de jours travaillés / Nombre de jours de référence) */
+function CYCLE_PAIE_JOURS(){ return Math.max(Number(state.settings.joursReferenceSalaire)||30, 1); }
 function lastPaymentDate(employeeId){
-  const p = employeePayments(employeeId)[0]; // déjà trié du plus récent au plus ancien
+  // Seuls les paiements de SALAIRE ferment un cycle (la rémunération de gestion est un versement distinct)
+  const p = employeePayments(employeeId).find(p=>p.categorie!=='Rémunération gestion'); // trié du plus récent au plus ancien
   return p ? p.date : null;
 }
 function cycleStartDate(employee){
@@ -3330,20 +3389,40 @@ function cycleStartDate(employee){
   return d.toISOString().slice(0,10);
 }
 function joursDepuisCycle(employee){
-  return daysAgo(cycleStartDate(employee));
+  // Jours travaillés depuis le dernier paiement, jour en cours inclus (embauché lundi, on est mercredi = 3 jours)
+  return Math.max(0, daysAgo(cycleStartDate(employee)) + 1);
+}
+/* Gains accumulés depuis le dernier paiement : le montant grandit chaque jour travaillé.
+   Utilise la base de calcul par défaut (Paramètres) : fixe, mixte ou lié au CA. */
+function salaryContext(){ return { sug: computeSuggestedSalaries(), mix: computeMixedSalaries() }; }
+function employeeAccrual(e, ctx){
+  ctx = ctx || salaryContext();
+  const jRef = CYCLE_PAIE_JOURS();
+  const jours = joursDepuisCycle(e);
+  const sugRow = ctx.sug.rows.find(r=>r.employee.id===e.id);
+  const mixRow = ctx.mix.rows.find(r=>r.employee.id===e.id);
+  const refs = { fixe: Number(e.salaire)||0, ca: sugRow ? sugRow.suggere : null, mixte: mixRow ? mixRow.total : null };
+  const setting = ['fixe','ca','mixte'].includes(state.settings.salaireBaseMode) ? state.settings.salaireBaseMode : 'mixte';
+  const mode = refs[setting]!==null ? setting : 'fixe';
+  const base = Math.round(refs[mode] / jRef * jours);
+  const prime = Math.round(base * primeAncienneteRate(e) / 100);
+  return { jours, jRef, mode, base, prime, total: base + prime, parJour: Math.round(refs[mode] / jRef) };
+}
+function totalDejaPaye(employeeId){
+  return employeePayments(employeeId).filter(p=>p.categorie!=='Rémunération gestion').reduce((a,p)=>a+(Number(p.montant)||0),0);
 }
 function isDueForPayment(employee){
-  return joursDepuisCycle(employee) >= CYCLE_PAIE_JOURS;
+  return joursDepuisCycle(employee) >= CYCLE_PAIE_JOURS();
 }
 function paymentStatusBadge(employee){
   const jours = joursDepuisCycle(employee);
   if(employee.statut==='Inactif'){
     return `<span class="pill pill-warn">Départ — ${jours}j dus</span>`;
   }
-  if(jours >= CYCLE_PAIE_JOURS){
+  if(jours >= CYCLE_PAIE_JOURS()){
     return `<span class="pill pill-warn">✅ À payer (${jours}j)</span>`;
   }
-  return `<span class="pill pill-neutral">⏳ Dans ${CYCLE_PAIE_JOURS-jours}j (${jours}/${CYCLE_PAIE_JOURS}j)</span>`;
+  return `<span class="pill pill-neutral">⏳ Dans ${CYCLE_PAIE_JOURS()-jours}j (${jours}/${CYCLE_PAIE_JOURS()}j)</span>`;
 }
 
 /* ========================================================
@@ -3469,34 +3548,71 @@ function deleteEvaluation(id, employeeId){
    expérience, compétences, ancienneté et performance (Admin Principal uniquement)
    ======================================================== */
 function employeeCoefficient(e){
+  // L'ancienneté n'entre plus dans le coefficient : elle est déjà récompensée par la prime d'ancienneté (pas de double comptage).
   const respo = Number(e.niveauResponsabilite)||1;              // 1–5, reflète le poste et le niveau de responsabilité
   const experience = Math.min(Number(e.experienceAnnees)||0, 10)/10*5; // plafonné à 10 ans, ramené sur 5
   const competences = Number(e.competences)||1;                 // 1–5
-  const anciennete5 = Math.min(ancienneteJours(e.dateEmbauche), 3650)/3650*5; // ancienneté en jours, plafonnée à 3650 j (10 ans), ramenée sur 5
   const performance5 = employeePerformance(e.id)/100*5;         // 0–100 → 0–5
-  return respo*0.30 + experience*0.20 + competences*0.20 + anciennete5*0.15 + performance5*0.15;
+  return respo*0.35 + experience*0.25 + competences*0.25 + performance5*0.15;
+}
+function tauxMasseSalarialePct(){ const v = Number(state.settings.tauxMasseSalariale); return isFinite(v) && v > 0 ? v : 21; }
+function partFixeGarantiePct(){ const v = Number(state.settings.partFixeGarantiePct); return isFinite(v) && v >= 0 && v <= 100 ? v : 75; }
+function caOfMonth(mKey){ return state.sales.filter(s=>monthKey(s.date)===mKey).reduce((a,s)=>a+s.total,0); }
+/* CA de référence : dernier mois COMPLET (le même pour tous, quel que soit le jour où l'on paie).
+   Si le dernier mois complet n'a aucune vente (restaurant récent), on retombe sur le mois en cours. */
+function caReferenceSalaires(){
+  const now = new Date();
+  const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const prevKey = prev.getFullYear() + '-' + String(prev.getMonth()+1).padStart(2,'0');
+  const prevCA = caOfMonth(prevKey);
+  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);
+  if(prevCA > 0) return { ca: prevCA, label: cap(prev.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})), fallback:false };
+  return { ca: caOfMonth(todayISO().slice(0,7)), label: cap(now.toLocaleDateString('fr-FR',{month:'long',year:'numeric'})) + ' (mois en cours, aucun mois complet disponible)', fallback:true };
 }
 function computeSuggestedSalaries(){
-  const t = computeTotals();
-  const budget = t.caMois * 0.21;
+  const caRef = caReferenceSalaires();
+  const budget = caRef.ca * tauxMasseSalarialePct() / 100;
   const actifs = activeEmployees();
   const coeffs = actifs.map(e=>({ e, coef: employeeCoefficient(e) }));
   const totalCoef = coeffs.reduce((s,c)=>s+c.coef,0) || 1;
-  return { budget, rows: coeffs.map(c=>({ employee:c.e, coef:c.coef, part: c.coef/totalCoef, suggere: Math.round(budget * (c.coef/totalCoef) / 500)*500 })) };
+  return { budget, caRef, rows: coeffs.map(c=>({ employee:c.e, coef:c.coef, part: c.coef/totalCoef, suggere: Math.round(budget * (c.coef/totalCoef) / 500)*500 })) };
+}
+/* Salaire mixte : fixe garanti (x% du salaire fixe, jamais sous le minimum) + prime variable liée au CA.
+   La prime variable = part de l'employé dans la masse variable, c.-à-d. la masse salariale cible (x% du CA de
+   référence) moins les fixes garantis de toute l'équipe. Si le CA est faible, la masse variable est nulle :
+   chacun touche son fixe garanti, jamais moins. */
+function salaireFixeGaranti(e){
+  const garanti = Math.round((Number(e.salaire)||0) * partFixeGarantiePct() / 100);
+  return Math.max(garanti, Number(state.settings.salaireMinimum)||0);
+}
+function computeMixedSalaries(){
+  const sug = computeSuggestedSalaries();
+  const garanties = sug.rows.map(r=>salaireFixeGaranti(r.employee));
+  const totalGaranti = garanties.reduce((a,b)=>a+b,0);
+  const pool = Math.max(0, sug.budget - totalGaranti);
+  const rows = sug.rows.map((r,i)=>{
+    const variable = Math.round(pool * r.part / 500) * 500;
+    return { employee:r.employee, part:r.part, garanti:garanties[i], variable, total:garanties[i]+variable };
+  });
+  return { budget:sug.budget, caRef:sug.caRef, totalGaranti, pool, rows };
 }
 function openSalaryCalcModal(){
-  const { budget, rows } = computeSuggestedSalaries();
+  const { budget, rows, caRef } = computeSuggestedSalaries();
+  const mix = computeMixedSalaries();
+  const mixOf = id => mix.rows.find(r=>r.employee.id===id);
   rows.sort((a,b)=>b.suggere-a.suggere);
   openModal({
     title: 'Calcul des salaires suggérés',
     bodyHtml:`
       <p style="font-size:12.5px;color:var(--ink-soft);line-height:1.6;">
-        Masse salariale cible : <b>21% du CA du mois en cours</b> = <b>${fcfa(budget)}</b>, répartie entre les employés actifs
-        selon le poste/niveau de responsabilité (30%), l'expérience (20%), les compétences (20%), l'ancienneté (15%) et la performance (15%).
+        Masse salariale cible : <b>${tauxMasseSalarialePct()}% du CA de ${escapeHtml(caRef.label)}</b> (${fcfa(caRef.ca)}) = <b>${fcfa(budget)}</b>, répartie entre les employés actifs
+        selon le poste/niveau de responsabilité (35%), l'expérience (25%), les compétences (25%) et la performance (15%).
+        L'ancienneté n'entre pas dans cette répartition : elle est récompensée à part par la prime d'ancienneté.<br>
+        <b>Formule mixte</b> : fixe garanti (${partFixeGarantiePct()}% du salaire fixe) + prime variable liée au CA (masse variable de ${fcfa(mix.pool)} après ${fcfa(mix.totalGaranti)} de fixes garantis).
       </p>
       <div class="table-wrap" style="margin-top:12px;">
         <table class="data-table">
-          <thead><tr><th>Employé</th><th>Poste</th><th>Ancienneté</th><th>Cycle de paie</th><th>Part</th><th>Salaire suggéré</th><th>Salaire actuel</th><th></th></tr></thead>
+          <thead><tr><th>Employé</th><th>Poste</th><th>Ancienneté</th><th>Cycle de paie</th><th>Part</th><th>Part du CA seule</th><th>Formule mixte</th><th>Salaire actuel</th><th></th></tr></thead>
           <tbody>
             ${rows.map(r=>`<tr>
               <td><b>${escapeHtml(r.employee.nom)}</b></td>
@@ -3505,6 +3621,7 @@ function openSalaryCalcModal(){
               <td>${paymentStatusBadge(r.employee)}</td>
               <td class="num">${Math.round(r.part*1000)/10}%</td>
               <td class="num"><b>${fcfa(r.suggere)}</b></td>
+              <td class="num"><b>${fcfa(mixOf(r.employee.id).total)}</b><br><span style="font-size:10.5px;color:var(--ink-soft);">${fcfa(mixOf(r.employee.id).garanti)} + ${fcfa(mixOf(r.employee.id).variable)}</span></td>
               <td class="num">${fcfa(r.employee.salaire)}</td>
               <td class="actions"><button class="btn btn-soft btn-sm" onclick="applySuggestedSalary('${r.employee.id}', ${r.suggere})">Appliquer</button></td>
             </tr>`).join('')}
@@ -4009,36 +4126,227 @@ function deleteMovement(id){
 }
 
 /* ========================================================
-   PAGE : ABONNEMENTS (particuliers & entreprises)
+   PAGE : ABONNEMENTS — 5 formules « Nafa » (voir Protocole des formules clients)
+   ① Abonnement (repas prépayés) · ② Prépayé (solde en FCFA) · ③ Prépayé Fidélité (solde + bonus)
+   ④ Fin de mois — Crédit (quota + plafonds + niveaux de fiabilité) · ⑤ Séjour (période + repas/jour)
    ======================================================== */
-let subsFilter = { q:'', type:'', statut:'' };
+let subsFilter = { q:'', type:'', statut:'', formule:'' };
 
+const NIVEAU_FIABILITE_LABELS = {0:'Nouveau client', 1:'Client régulier', 2:'Client fiable', 3:'Client très fiable'};
+const FORMULE_LABELS = { abonnement:'🎟️ Abonnement', prepaye:'💰 Prépayé', fidelite:'🎁 Prépayé Fidélité', credit:'🧾 Fin de mois — Crédit', sejour:'🏨 Séjour', legacy:'📁 Ancien format' };
+
+/* ---- Règles de crédit : quota de clients, plafond global, plafond par niveau de fiabilité ---- */
+function creditSettings(){ return state.settings.credit || (state.settings.credit = { quotaMax:10, plafondGlobal:100000, plafondParNiveau:{0:0,1:10000,2:20000,3:30000} }); }
+function plafondPourNiveau(niveau){ return Number((creditSettings().plafondParNiveau||{})[niveau]) || 0; }
+function creditSubscribers(){ return state.subscriptions.filter(s=>s.formule==='credit'); }
+function creditActifsCount(){ return creditSubscribers().filter(s=>s.statutFiabilite!=='suspendu').length; }
+function creditEncoursTotal(){ return creditSubscribers().reduce((a,s)=>a+(Number(s.encoursCredit)||0),0); }
+function creditPlacesDisponibles(){ return Math.max(0, (creditSettings().quotaMax||0) - creditActifsCount()); }
+function creditCapaciteRestante(){ return Math.max(0, (creditSettings().plafondGlobal||0) - creditEncoursTotal()); }
+function creditImpayesTotal(){ return creditSubscribers().filter(s=>s.statutFiabilite==='impaye').reduce((a,s)=>a+(Number(s.encoursCredit)||0),0); }
+function creditEnRetardCount(){ return creditSubscribers().filter(s=>s.statutFiabilite==='retard'||s.statutFiabilite==='impaye').length; }
+
+/* Tableau de contrôle du responsable (protocole, section 9) : visible en permanence en haut de la page */
+function renderCreditKpis(){
+  const cs = creditSettings();
+  const restante = creditCapaciteRestante();
+  const cards = [
+    {label:'Quota crédit', value: creditActifsCount()+' / '+cs.quotaMax, note: creditPlacesDisponibles()+' place(s) disponible(s)', icon:'🎫', accent:'--sky', tint:'--sky-tint'},
+    {label:'Plafond global', value: fmt(cs.plafondGlobal)+' F', note: 'Utilisé : '+fmt(creditEncoursTotal())+' F', icon:'🧮', accent:'--millet', tint:'--millet-tint'},
+    {label:'Capacité restante', value: fmt(restante)+' F', note: restante<=0?'⚠️ Plafond atteint — aucun nouveau crédit':'avant d\'atteindre le plafond', icon:'📊', accent: restante<=0?'--bissap':'--leaf', tint: restante<=0?'--bissap-tint':'--leaf-tint'},
+    {label:'Impayés / retards', value: fmt(creditImpayesTotal())+' F', note: creditEnRetardCount()+' client(s) en retard ou impayé', icon:'⚠️', accent:'--bissap', tint:'--bissap-tint'},
+  ];
+  $('#creditKpis').innerHTML = cards.map(k=>`
+    <div class="kpi-card" style="--accent:var(${k.accent});--accent-tint:var(${k.tint})">
+      <div class="kpi-top"><span class="kpi-label">${k.label}</span><span class="kpi-badge">${k.icon}</span></div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-note">${k.note}</div>
+    </div>`).join('');
+}
+function openCreditSettingsModal(){
+  const cs = creditSettings();
+  openModal({
+    title: '⚙️ Réglages du crédit « Fin de mois »', narrow:true,
+    bodyHtml:`
+      <form id="creditSettingsForm">
+        <div class="form-grid">
+          <div class="field full"><label>Quota maximum de clients à crédit simultanés</label><input required type="number" min="0" step="1" name="quotaMax" value="${cs.quotaMax}"></div>
+          <div class="field full"><label>Plafond global de créances (FCFA)</label><input required type="number" min="0" step="500" name="plafondGlobal" value="${cs.plafondGlobal}"></div>
+          <div class="field"><label>Plafond — ${escapeHtml(NIVEAU_FIABILITE_LABELS[0])}</label><input required type="number" min="0" step="500" name="p0" value="${plafondPourNiveau(0)}"></div>
+          <div class="field"><label>Plafond — ${escapeHtml(NIVEAU_FIABILITE_LABELS[1])}</label><input required type="number" min="0" step="500" name="p1" value="${plafondPourNiveau(1)}"></div>
+          <div class="field"><label>Plafond — ${escapeHtml(NIVEAU_FIABILITE_LABELS[2])}</label><input required type="number" min="0" step="500" name="p2" value="${plafondPourNiveau(2)}"></div>
+          <div class="field"><label>Plafond — ${escapeHtml(NIVEAU_FIABILITE_LABELS[3])}</label><input required type="number" min="0" step="500" name="p3" value="${plafondPourNiveau(3)}"></div>
+        </div>
+        <p style="font-size:11px;color:var(--ink-soft);">Le quota et les plafonds doivent refléter la capacité financière réelle du restaurant à supporter des impayés temporaires — pas la demande des clients.</p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#creditSettingsForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const f = new FormData(e.target);
+        cs.quotaMax = Math.max(0, Number(f.get('quotaMax'))||0);
+        cs.plafondGlobal = Math.max(0, Number(f.get('plafondGlobal'))||0);
+        cs.plafondParNiveau = {0:Number(f.get('p0'))||0, 1:Number(f.get('p1'))||0, 2:Number(f.get('p2'))||0, 3:Number(f.get('p3'))||0};
+        persist(); closeModal(); renderCreditKpis(); toast('Réglages du crédit mis à jour');
+      });
+    }
+  });
+}
+
+/* ---- Statut et affichage du solde / échéance selon la formule ---- */
 function subStatutComputed(s){
-  return (s.dateExpiration && s.dateExpiration < todayISO()) ? 'expire' : 'actif';
+  if(s.formule==='credit'){
+    if(s.statutFiabilite==='suspendu' || s.statutFiabilite==='impaye') return 'impaye';
+    if(s.statutFiabilite==='retard') return 'retard';
+    return 'actif';
+  }
+  if(s.formule==='abonnement') return (Number(s.repasConsommes)||0) >= (Number(s.repasTotal)||0) ? 'expire' : 'actif';
+  if(s.formule==='prepaye' || s.formule==='fidelite') return (Number(s.soldeRestant)||0) <= 0 ? 'expire' : 'actif';
+  if(s.formule==='sejour'){
+    const fin = addDaysISO(s.dateDebut, Number(s.dureeJours)||1);
+    if(todayISO() > fin || (Number(s.repasConsommes)||0) >= (Number(s.repasTotalMax)||0)) return 'expire';
+    return 'actif';
+  }
+  return (s.dateExpiration && s.dateExpiration < todayISO()) ? 'expire' : 'actif'; // legacy
+}
+function subStatutBadge(s){
+  const st = subStatutComputed(s);
+  if(s.formule==='credit'){
+    if(s.statutFiabilite==='suspendu') return '<span class="pill pill-danger">⛔ Suspendu</span>';
+    if(s.statutFiabilite==='impaye') return '<span class="pill pill-danger">❌ Impayé</span>';
+    if(s.statutFiabilite==='retard') return '<span class="pill pill-warn">⏳ En retard</span>';
+    return '<span class="pill pill-ok">✅ À jour</span>';
+  }
+  return st==='actif' ? '<span class="pill pill-ok">✅ Actif</span>' : '<span class="pill pill-warn">⚠️ Expiré / épuisé</span>';
+}
+/* ---- Photos des abonnés (personne + pièce d'identité) ----
+   Les images sont redimensionnées et compressées (JPEG) avant d'être stockées, pour ne pas saturer
+   l'espace de stockage du navigateur (une photo de téléphone brute pèse plusieurs Mo). */
+function compressImageFile(file, {maxSize=800, quality=0.75, square=false}={}){
+  return new Promise((resolve, reject)=>{
+    if(!file || !/^image\//.test(file.type)) return reject(new Error('Fichier non valide : choisissez une image'));
+    const reader = new FileReader();
+    reader.onerror = ()=>reject(new Error('Lecture du fichier impossible'));
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>reject(new Error('Image illisible'));
+      img.onload = ()=>{
+        let sx=0, sy=0, sw=img.width, sh=img.height;
+        if(square){ const m=Math.min(sw,sh); sx=(sw-m)/2; sy=(sh-m)/2; sw=sh=m; }
+        const scale = Math.min(1, maxSize/Math.max(sw,sh));
+        const cw = Math.max(1, Math.round(sw*scale)), ch = Math.max(1, Math.round(sh*scale));
+        const canvas = document.createElement('canvas'); canvas.width=cw; canvas.height=ch;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0,0,cw,ch);
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function subImagePreviewHtml(data, kind){
+  if(data) return `<img src="${data}" style="width:100%;height:100%;object-fit:cover;">`;
+  return `<div style="width:100%;height:100%;background:var(--line-soft);display:flex;align-items:center;justify-content:center;font-size:${kind==='cni'?'26':'24'}px;color:var(--ink-faint);">${kind==='cni'?'🪪':'👤'}</div>`;
+}
+function subImageFieldHtml(kind, label, data){
+  const w = kind==='cni' ? 112 : 64, h = 64;
+  return `
+    <div class="field full"><label>${label}</label>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div id="sub-${kind}-preview" style="width:${w}px;height:${h}px;border-radius:12px;overflow:hidden;flex-shrink:0;border:1px solid var(--line);">${subImagePreviewHtml(data, kind)}</div>
+        <label class="btn btn-soft btn-sm" style="cursor:pointer;">📷 ${data?'Changer':'Ajouter'}<input type="file" id="sub-${kind}-input" accept="image/*" style="display:none;"></label>
+        <button type="button" class="btn btn-ghost btn-sm" id="sub-${kind}-remove" style="${data?'':'display:none;'}">Retirer</button>
+      </div>
+    </div>`;
+}
+/* Consultation de la photo et de la pièce d'identité d'un abonné (en grand) */
+function openSubscriberIdentity(id){
+  const s = state.subscriptions.find(s=>s.id===id);
+  if(!s) return;
+  const box = (title, data, emptyMsg, maxW) => `
+    <div style="flex:1;min-width:200px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:6px;">${title}</div>
+      ${data ? `<img src="${data}" style="width:100%;max-width:${maxW}px;border-radius:12px;border:1px solid var(--line);display:block;">`
+             : `<div style="padding:26px 12px;border:1px dashed var(--line);border-radius:12px;color:var(--ink-faint);font-size:12.5px;text-align:center;">${emptyMsg}</div>`}
+    </div>`;
+  openModal({
+    title: '🪪 ' + escapeHtml(s.nom),
+    bodyHtml: `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        ${box('Photo', s.photo, 'Aucune photo enregistrée', 240)}
+        ${box("Carte d'identité", s.photoCni, "Aucune pièce d'identité enregistrée", 420)}
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" data-cancel>Fermer</button>
+        <button type="button" class="btn btn-primary" id="btnEditIdentity">✏️ Modifier</button>
+      </div>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#btnEditIdentity').addEventListener('click', ()=>{ closeModal(); openSubscriptionForm(id); });
+    }
+  });
+}
+
+function subSoldeCellHtml(s){
+  if(s.formule==='abonnement'){
+    const restant = Math.max(0, (Number(s.repasTotal)||0) - (Number(s.repasConsommes)||0));
+    return `<b>${restant}</b> / ${s.repasTotal} repas restants`;
+  }
+  if(s.formule==='prepaye' || s.formule==='fidelite'){
+    return `<b>${fmt(s.soldeRestant)}</b> F restants`;
+  }
+  if(s.formule==='credit'){
+    return `<b style="color:${s.encoursCredit>0?'var(--bissap-dark)':'inherit'};">${fmt(s.encoursCredit||0)}</b> F dus<br><span style="font-size:11px;color:var(--ink-soft);">Échéance ${fmtDate(s.dateLimitePaiement)}</span>`;
+  }
+  if(s.formule==='sejour'){
+    const restant = Math.max(0, (Number(s.repasTotalMax)||0) - (Number(s.repasConsommes)||0));
+    return `<b>${restant}</b> / ${s.repasTotalMax} repas — ${s.repasParJour}/j × ${s.dureeJours}j`;
+  }
+  return escapeHtml(s.typeAbonnement || '—'); // legacy
 }
 
 function renderAbonnements(){
+  renderCreditKpis();
   const q = subsFilter.q.toLowerCase();
   let rows = state.subscriptions.filter(s=>{
     const label = (s.nom+' '+(s.telephone||'')+' '+(s.contact||'')).toLowerCase();
     if(q && !label.includes(q)) return false;
     if(subsFilter.type && s.type!==subsFilter.type) return false;
+    if(subsFilter.formule && s.formule!==subsFilter.formule) return false;
     if(subsFilter.statut && subStatutComputed(s)!==subsFilter.statut) return false;
     return true;
-  }).sort((a,b)=> (b.dateDebut||'').localeCompare(a.dateDebut||''));
+  }).sort((a,b)=> (b.dateCreation||b.dateDebut||'').localeCompare(a.dateCreation||a.dateDebut||''));
   $('#subsTotalTag').textContent = rows.length + ' abonné(s)';
   $('#subsTbody').innerHTML = rows.length ? rows.map(s=>{
-    const statut = subStatutComputed(s);
+    const validite = s.formule==='sejour' ? `${fmtDate(s.dateDebut)} → ${fmtDate(addDaysISO(s.dateDebut, Number(s.dureeJours)||1))}`
+      : s.formule==='credit' ? `Niveau : ${escapeHtml(NIVEAU_FIABILITE_LABELS[s.niveauFiabilite]||'—')}`
+      : s.dateExpiration ? `${fmtDate(s.dateDebut)} → ${fmtDate(s.dateExpiration)}` : fmtDate(s.dateDebut)+' →';
     return `<tr>
-      <td>${s.type==='entreprise'?'🏢 Entreprise':'👤 Particulier'}</td>
-      <td class="name-cell"><b>${escapeHtml(s.nom)}</b>${s.type==='entreprise'&&s.adresse?`<span>${escapeHtml(s.adresse)}</span>`:''}</td>
+      <td>${FORMULE_LABELS[s.formule]||'—'}${s.formule!=='legacy'?`<br><span style="font-size:10.5px;color:var(--ink-soft);">${s.type==='entreprise'?'🏢':'👤'}</span>`:''}</td>
+      <td><div style="display:flex;align-items:center;gap:10px;">
+        <span style="cursor:pointer;display:inline-flex;" title="Voir la photo et la pièce d'identité" onclick="openSubscriberIdentity('${s.id}')">${employeeAvatarHtml(s, 38)}</span>
+        <div class="name-cell"><b>${escapeHtml(s.nom)}</b>${s.type==='entreprise'&&s.adresse?`<span>${escapeHtml(s.adresse)}</span>`:''}${s.photoCni?`<span style="cursor:pointer;color:var(--leaf-dark);" onclick="openSubscriberIdentity('${s.id}')">🪪 Pièce d'identité ✓</span>`:(s.formule==='credit'?`<span style="color:var(--bissap-dark);">🪪 Pièce d'identité manquante</span>`:'')}</div>
+      </div></td>
       <td>${s.type==='entreprise' ? escapeHtml(s.contact||'—')+(s.telephone?` <span style="color:var(--ink-soft);font-size:11px;">(${escapeHtml(s.telephone)})</span>`:'') : escapeHtml(s.telephone||'—')}</td>
-      <td>${escapeHtml(s.typeAbonnement||'—')}</td>
+      <td style="font-size:12.5px;">${subSoldeCellHtml(s)}</td>
       <td class="num">${fmt(s.montant)}</td>
-      <td>${fmtDate(s.dateDebut)} → ${fmtDate(s.dateExpiration)}</td>
-      <td>${statut==='actif'?'<span class="pill pill-ok">✅ Actif</span>':'<span class="pill pill-warn">⚠️ Expiré</span>'}</td>
+      <td style="font-size:12px;">${validite}</td>
+      <td>${subStatutBadge(s)}</td>
       <td class="actions"><div class="row-actions">
-        <button class="icon-btn" title="Carte de fidélité" onclick="printSubscriptionCard('${s.id}')">🪪</button>
+        ${s.formule==='credit'
+          ? `<button class="icon-btn" title="Enregistrer une consommation à crédit" onclick="openCreditConsommationForm('${s.id}')">🍽️</button>
+             <button class="icon-btn" title="Enregistrer un paiement" onclick="openCreditPaymentForm('${s.id}')">💵</button>
+             <button class="icon-btn" title="${s.statutFiabilite==='suspendu'?'Réactiver':'Suspendre'}" onclick="toggleCreditSuspension('${s.id}')">${s.statutFiabilite==='suspendu'?'▶️':'⛔'}</button>`
+          : s.formule!=='legacy'
+          ? `<button class="icon-btn" title="Enregistrer une consommation" onclick="openConsommationForm('${s.id}')">🍽️</button>`
+          : ''}
+        <button class="icon-btn" title="Carte" onclick="printSubscriptionCard('${s.id}')">🪪</button>
         <button class="icon-btn" title="Modifier" onclick="openSubscriptionForm('${s.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteSubscription('${s.id}')">🗑️</button>
       </div></td>
@@ -4046,30 +4354,78 @@ function renderAbonnements(){
   }).join('') : `<tr class="empty-row"><td colspan="8">Aucun abonné trouvé.</td></tr>`;
 }
 
+function subscriptionFormuleFieldsHtml(formule, item){
+  const cs = creditSettings();
+  const niveau = item ? (item.niveauFiabilite||0) : 0;
+  return `
+    <div data-formule-fields="abonnement" style="${formule==='abonnement'?'':'display:none;'}" class="form-grid full">
+      <div class="field"><label>Nombre de repas du forfait</label>
+        <select name="repasTotal">${[10,20,30].map(n=>`<option value="${n}" ${item&&item.repasTotal===n?'selected':''}>${n} repas</option>`).join('')}<option value="custom" ${item&&![10,20,30].includes(item.repasTotal)?'selected':''}>Autre…</option></select>
+      </div>
+      <div class="field"><label>Repas déjà consommés</label><input type="number" min="0" name="repasConsommes" value="${item?item.repasConsommes||0:0}"></div>
+    </div>
+    <div data-formule-fields="prepaye" style="${formule==='prepaye'?'':'display:none;'}" class="form-grid full">
+      <div class="field full"><label>Montant déposé (FCFA)</label><input type="number" min="0" name="montantDepose" value="${item?item.montantDepose||'':''}"></div>
+    </div>
+    <div data-formule-fields="fidelite" style="${formule==='fidelite'?'':'display:none;'}" class="form-grid full">
+      <div class="field"><label>Montant déposé (FCFA)</label><input type="number" min="0" name="montantDepose2" value="${item?item.montantDepose||'':''}"></div>
+      <div class="field"><label>Bonus commercial (FCFA)</label><input type="number" min="0" name="bonus" value="${item?item.bonus||0:0}"></div>
+      <p class="field full" style="font-size:11px;color:var(--ink-soft);margin:0;">Le bonus doit rester compatible avec la marge du restaurant (ex : 20 000 F déposés → crédit commercial de 21 000 F).</p>
+    </div>
+    <div data-formule-fields="credit" style="${formule==='credit'?'':'display:none;'}" class="form-grid full">
+      <div class="field"><label>Niveau de fiabilité</label>
+        <select name="niveauFiabilite" id="niveauFiabiliteSelect">${[0,1,2,3].map(n=>`<option value="${n}" ${niveau===n?'selected':''}>${escapeHtml(NIVEAU_FIABILITE_LABELS[n])} — plafond ${fmt(plafondPourNiveau(n))} F</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Plafond de crédit individuel (FCFA)</label><input type="number" min="0" name="plafondCredit" id="plafondCreditInput" value="${item?item.plafondCredit:plafondPourNiveau(0)}"></div>
+      <div class="field full"><label>Date limite de paiement (fin de mois)</label><input type="date" name="dateLimitePaiement" value="${item?item.dateLimitePaiement:addDaysISO(todayISO(),30)}"></div>
+      ${!item ? `<p class="field full" style="font-size:11px;color:var(--ink-soft);margin:0;">Places disponibles : <b>${creditPlacesDisponibles()}</b> / ${cs.quotaMax} · Capacité restante avant le plafond global : <b>${fmt(creditCapaciteRestante())}</b> F</p>` : ''}
+    </div>
+    <div data-formule-fields="sejour" style="${formule==='sejour'?'':'display:none;'}" class="form-grid full">
+      <div class="field"><label>Durée du séjour (1 à 30 jours)</label><input type="number" min="1" max="30" name="dureeJours" value="${item?item.dureeJours||1:1}"></div>
+      <div class="field"><label>Repas par jour</label><input type="number" min="1" max="10" name="repasParJour" value="${item?item.repasParJour||2:2}"></div>
+      <div class="field full" style="font-size:11px;color:var(--ink-soft);">Repas total maximum = durée × repas/jour (calculé automatiquement).</div>
+    </div>`;
+}
+
 function openSubscriptionForm(id){
   const item = id ? state.subscriptions.find(s=>s.id===id) : null;
   const type = item ? item.type : 'particulier';
+  const formule = item ? item.formule : 'abonnement';
   openModal({
     title: item ? "Modifier l'abonnement" : 'Nouvel abonné',
     bodyHtml:`
       <form id="subForm">
-        <div class="field full" style="margin-bottom:14px;">
-          <label>Type d'abonné</label>
-          <select name="type" id="subTypeSelect">
-            <option value="particulier" ${type==='particulier'?'selected':''}>👤 Particulier</option>
-            <option value="entreprise" ${type==='entreprise'?'selected':''}>🏢 Entreprise</option>
-          </select>
+        <div class="form-grid" style="margin-bottom:14px;">
+          <div class="field"><label>Type d'abonné</label>
+            <select name="type" id="subTypeSelect">
+              <option value="particulier" ${type==='particulier'?'selected':''}>👤 Particulier</option>
+              <option value="entreprise" ${type==='entreprise'?'selected':''}>🏢 Entreprise</option>
+            </select>
+          </div>
+          <div class="field"><label>Formule</label>
+            <select name="formule" id="subFormuleSelect" ${item?'disabled':''}>
+              <option value="abonnement" ${formule==='abonnement'?'selected':''}>🎟️ ① Abonnement (repas prépayés)</option>
+              <option value="prepaye" ${formule==='prepaye'?'selected':''}>💰 ② Prépayé (solde FCFA)</option>
+              <option value="fidelite" ${formule==='fidelite'?'selected':''}>🎁 ③ Prépayé Fidélité (solde + bonus)</option>
+              <option value="credit" ${formule==='credit'?'selected':''}>🧾 ④ Fin de mois — Crédit</option>
+              <option value="sejour" ${formule==='sejour'?'selected':''}>🏨 ⑤ Séjour (période + repas/jour)</option>
+            </select>
+            ${item?'<input type="hidden" name="formule" value="'+formule+'">':''}
+          </div>
         </div>
         <div class="form-grid">
           <div class="field full"><label id="subNomLabel">${type==='entreprise'?"Nom de l'entreprise":'Nom et prénom'}</label><input required name="nom" value="${item?escapeHtml(item.nom):''}"></div>
           <div class="field" data-sub-field="entreprise" style="${type==='entreprise'?'':'display:none;'}"><label>Adresse</label><input name="adresse" value="${item&&item.adresse?escapeHtml(item.adresse):''}"></div>
           <div class="field" data-sub-field="entreprise" style="${type==='entreprise'?'':'display:none;'}"><label>Personne de contact</label><input name="contact" value="${item&&item.contact?escapeHtml(item.contact):''}"></div>
           <div class="field"><label>Téléphone</label><input required name="telephone" value="${item?escapeHtml(item.telephone||''):''}" placeholder="77 123 45 67"></div>
-          <div class="field"><label>Type d'abonnement</label><input required name="typeAbonnement" value="${item?escapeHtml(item.typeAbonnement||''):''}" placeholder="Ex : Mensuel Déjeuner"></div>
-          <div class="field"><label>Montant (FCFA)</label><input required type="number" min="0" name="montant" value="${item?item.montant:''}"></div>
+          <div class="field"><label>Montant payé (FCFA)</label><input required type="number" min="0" name="montant" value="${item?item.montant:''}"></div>
           <div class="field"><label>Date de début</label><input required type="date" name="dateDebut" value="${item?item.dateDebut:todayISO()}"></div>
-          <div class="field"><label>Date d'expiration</label><input required type="date" name="dateExpiration" value="${item?item.dateExpiration:''}"></div>
         </div>
+        <div class="form-grid" style="margin-top:14px;">
+          ${subImageFieldHtml('photo', 'Photo de la personne', item?item.photo:null)}
+          ${subImageFieldHtml('cni', "Photo de la carte d'identité", item?item.photoCni:null)}
+        </div>
+        <div id="subFormuleFieldsWrap">${subscriptionFormuleFieldsHtml(formule, item)}</div>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
           <button type="submit" class="btn btn-primary">${item?'Enregistrer':"Créer l'abonnement"}</button>
@@ -4083,18 +4439,90 @@ function openSubscriptionForm(id){
         overlay.querySelectorAll('[data-sub-field="entreprise"]').forEach(el=>el.style.display = isEnt?'':'none');
         nomLabel.textContent = isEnt ? "Nom de l'entreprise" : 'Nom et prénom';
       });
+      const formuleSel = overlay.querySelector('#subFormuleSelect');
+      if(formuleSel){
+        formuleSel.addEventListener('change', ()=>{
+          overlay.querySelector('#subFormuleFieldsWrap').innerHTML = subscriptionFormuleFieldsHtml(formuleSel.value, null);
+          wireNiveauSelect();
+        });
+      }
+      function wireNiveauSelect(){
+        const nSel = overlay.querySelector('#niveauFiabiliteSelect');
+        const pInput = overlay.querySelector('#plafondCreditInput');
+        if(nSel && pInput) nSel.addEventListener('change', ()=>{ pInput.value = plafondPourNiveau(Number(nSel.value)); });
+      }
+      wireNiveauSelect();
+      // Photos : compression à la sélection, aperçu immédiat
+      let photoData = item ? (item.photo||null) : null;
+      let cniData = item ? (item.photoCni||null) : null;
+      let imagesPending = 0;
+      const wireImage = (kind, opts, getter, setter) => {
+        const input = overlay.querySelector(`#sub-${kind}-input`);
+        const preview = overlay.querySelector(`#sub-${kind}-preview`);
+        const remove = overlay.querySelector(`#sub-${kind}-remove`);
+        input.addEventListener('change', async ()=>{
+          const file = input.files[0]; if(!file) return;
+          imagesPending++;
+          try{
+            const data = await compressImageFile(file, opts);
+            setter(data); preview.innerHTML = subImagePreviewHtml(data, kind); remove.style.display = '';
+          }catch(err){ toast(err.message || "Impossible de traiter l'image", 'error'); }
+          finally{ imagesPending--; input.value = ''; }
+        });
+        remove.addEventListener('click', ()=>{ setter(null); preview.innerHTML = subImagePreviewHtml(null, kind); remove.style.display = 'none'; });
+      };
+      wireImage('photo', {maxSize:400, quality:0.8, square:true}, ()=>photoData, v=>{ photoData = v; });
+      wireImage('cni', {maxSize:900, quality:0.72}, ()=>cniData, v=>{ cniData = v; });
       overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
       overlay.querySelector('#subForm').addEventListener('submit',(e)=>{
         e.preventDefault();
+        if(imagesPending > 0){ toast("Traitement de l'image en cours, réessayez dans un instant", 'error'); return; }
         const f = new FormData(e.target);
+        const chosenFormule = f.get('formule');
         const payload = {
           type: f.get('type'), nom: f.get('nom').trim(), telephone: f.get('telephone').trim(),
           adresse: (f.get('adresse')||'').trim(), contact: (f.get('contact')||'').trim(),
-          typeAbonnement: f.get('typeAbonnement').trim(), montant: Number(f.get('montant')),
-          dateDebut: f.get('dateDebut'), dateExpiration: f.get('dateExpiration'),
+          montant: Number(f.get('montant')), dateDebut: f.get('dateDebut'),
+          photo: photoData, photoCni: cniData,
         };
+        if(chosenFormule==='abonnement'){
+          const rt = f.get('repasTotal');
+          payload.repasTotal = rt==='custom' ? Math.max(1, Number(prompt('Nombre de repas du forfait :', '10'))||10) : Number(rt);
+          payload.repasConsommes = Math.max(0, Number(f.get('repasConsommes'))||0);
+        } else if(chosenFormule==='prepaye'){
+          payload.montantDepose = Number(f.get('montantDepose'))||0;
+          payload.soldeRestant = item && item.formule==='prepaye' ? item.soldeRestant : payload.montantDepose;
+        } else if(chosenFormule==='fidelite'){
+          payload.montantDepose = Number(f.get('montantDepose2'))||0;
+          payload.bonus = Number(f.get('bonus'))||0;
+          payload.soldeRestant = item && item.formule==='fidelite' ? item.soldeRestant : payload.montantDepose + payload.bonus;
+        } else if(chosenFormule==='credit'){
+          const niveau = Number(f.get('niveauFiabilite'))||0;
+          const plafond = Math.max(0, Number(f.get('plafondCredit'))||0);
+          if(!item){
+            if(creditActifsCount() >= creditSettings().quotaMax){
+              toast(`Quota de clients à crédit atteint (${creditActifsCount()}/${creditSettings().quotaMax}). Libérez une place avant d'en ajouter un nouveau.`, 'error');
+              return;
+            }
+            if(plafond > creditCapaciteRestante()){
+              toast(`Plafond global de crédit dépassé. Capacité restante : ${fmt(creditCapaciteRestante())} FCFA.`, 'error');
+              return;
+            }
+          }
+          payload.niveauFiabilite = niveau;
+          payload.plafondCredit = plafond;
+          payload.dateLimitePaiement = f.get('dateLimitePaiement');
+          payload.encoursCredit = item ? item.encoursCredit||0 : 0;
+          payload.statutFiabilite = item ? item.statutFiabilite||'bon' : 'bon';
+          payload.historique = item ? item.historique||[] : [];
+        } else if(chosenFormule==='sejour'){
+          payload.dureeJours = Math.min(30, Math.max(1, Number(f.get('dureeJours'))||1));
+          payload.repasParJour = Math.max(1, Number(f.get('repasParJour'))||1);
+          payload.repasTotalMax = payload.dureeJours * payload.repasParJour;
+          payload.repasConsommes = item ? item.repasConsommes||0 : 0;
+        }
         if(item){ Object.assign(item, payload); toast('Abonnement modifié'); }
-        else { state.subscriptions.push({id:uid('SUB'), ...payload}); toast('Abonné ajouté'); }
+        else { payload.formule = chosenFormule; payload.dateCreation = todayISO(); payload.consommations = []; state.subscriptions.push({id:uid('SUB'), ...payload}); toast('Abonné ajouté'); }
         persist(); closeModal(); renderAbonnements();
       });
     }
@@ -4104,6 +4532,152 @@ function deleteSubscription(id){
   const s = state.subscriptions.find(s=>s.id===id);
   confirmModal({ message:`Supprimer l'abonnement de « ${escapeHtml(s.nom)} » ? Cette action est irréversible.`,
     onConfirm(){ state.subscriptions = state.subscriptions.filter(x=>x.id!==id); persist(); renderAbonnements(); toast('Abonnement supprimé'); } });
+}
+
+/* ---- Enregistrer une consommation (formules ①②③⑤) : décrémente le solde / les repas restants ---- */
+function openConsommationForm(id){
+  const s = state.subscriptions.find(s=>s.id===id);
+  const parRepas = s.formule==='abonnement' || s.formule==='sejour';
+  openModal({
+    title: '🍽️ Enregistrer une consommation — ' + s.nom, narrow:true,
+    bodyHtml:`
+      <form id="consoForm">
+        <div class="field full"><label>${parRepas ? 'Nombre de repas consommés' : 'Montant consommé (FCFA)'}</label>
+          <input required type="number" min="1" step="${parRepas?'1':'50'}" name="valeur" value="${parRepas?1:''}" autofocus>
+        </div>
+        <div class="field full"><label>Note (optionnel)</label><input name="note" placeholder="Ex : déjeuner du ${fmtDate(todayISO())}"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#consoForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const valeur = Number(new FormData(e.target).get('valeur'))||0;
+        const note = new FormData(e.target).get('note')||'';
+        if(s.formule==='abonnement'){
+          const restant = (Number(s.repasTotal)||0) - (Number(s.repasConsommes)||0);
+          if(valeur > restant){ toast(`Solde insuffisant : il ne reste que ${restant} repas.`, 'error'); return; }
+          s.repasConsommes = (Number(s.repasConsommes)||0) + valeur;
+        } else if(s.formule==='prepaye' || s.formule==='fidelite'){
+          if(valeur > (Number(s.soldeRestant)||0)){ toast(`Solde insuffisant : il reste ${fmt(s.soldeRestant)} FCFA.`, 'error'); return; }
+          s.soldeRestant = (Number(s.soldeRestant)||0) - valeur;
+        } else if(s.formule==='sejour'){
+          if(todayISO() > addDaysISO(s.dateDebut, Number(s.dureeJours)||1)){ toast('La période du séjour est terminée.', 'error'); return; }
+          const restant = (Number(s.repasTotalMax)||0) - (Number(s.repasConsommes)||0);
+          if(valeur > restant){ toast(`Solde insuffisant : il ne reste que ${restant} repas sur ce séjour.`, 'error'); return; }
+          s.repasConsommes = (Number(s.repasConsommes)||0) + valeur;
+        }
+        s.consommations = s.consommations || [];
+        s.consommations.push({ date: todayISO(), valeur, note });
+        persist(); closeModal(); renderAbonnements(); toast('Consommation enregistrée');
+      });
+    }
+  });
+}
+
+/* ---- Formule ④ : enregistrer une consommation à crédit (augmente l'encours, sous contrôle du plafond) ---- */
+/* ---- Formule ④ : enregistrer une consommation à crédit (augmente l'encours, sous contrôle du plafond) ---- */
+function openCreditConsommationForm(id){
+  const s = state.subscriptions.find(s=>s.id===id);
+  openModal({
+    title: '🍽️ Consommation à crédit — ' + s.nom, narrow:true,
+    bodyHtml:`
+      <p style="font-size:12.5px;color:var(--ink-soft);">Encours actuel : <b>${fmt(s.encoursCredit||0)}</b> / ${fmt(s.plafondCredit)} FCFA</p>
+      <form id="creditConsoForm">
+        <div class="field full"><label>Montant consommé (FCFA)</label><input required type="number" min="1" step="50" name="montant" autofocus></div>
+        <div class="field full"><label>Note (optionnel)</label><input name="note" placeholder="Ex : déjeuner du ${fmtDate(todayISO())}"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#creditConsoForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const f = new FormData(e.target);
+        const montant = Number(f.get('montant'))||0;
+        closeModal();
+        ajouterConsommationCredit(id, montant, f.get('note')||'');
+      });
+    }
+  });
+}
+function ajouterConsommationCredit(id, montant, note){
+  const s = state.subscriptions.find(s=>s.id===id);
+  const nouveauEncours = (Number(s.encoursCredit)||0) + montant;
+  const depassePlafondIndividuel = nouveauEncours > (Number(s.plafondCredit)||0);
+  const depassePlafondGlobal = montant > creditCapaciteRestante();
+  const proceed = () => {
+    s.encoursCredit = nouveauEncours;
+    s.historique = s.historique || [];
+    s.historique.push({ date: todayISO(), montant, type:'consommation', note });
+    persist(); renderAbonnements(); toast('Consommation à crédit enregistrée');
+  };
+  if(depassePlafondIndividuel || depassePlafondGlobal){
+    // Dépassement du plafond individuel ou du plafond global : autorisation du responsable requise
+    passwordConfirmModal({
+      title:'Dépassement de plafond', confirmLabel:'Autoriser quand même',
+      message: depassePlafondIndividuel
+        ? `Ce montant porterait l'encours de ${escapeHtml(s.nom)} à ${fmt(nouveauEncours)} FCFA, au-delà de son plafond individuel de ${fmt(s.plafondCredit)} FCFA. Aucun crédit ne doit être augmenté sans l'autorisation du responsable. Continuer ?`
+        : `Ce montant dépasse la capacité restante du plafond global de crédit (${fmt(creditCapaciteRestante())} FCFA disponibles). Aucun crédit ne doit être augmenté sans l'autorisation du responsable. Continuer ?`,
+      onConfirm(){ proceed(); closeModal(); }
+    });
+  } else {
+    proceed();
+  }
+}
+
+/* ---- Formule ④ : enregistrer un paiement de fin de mois (renouvellement, retard, impayé) ---- */
+function openCreditPaymentForm(id){
+  const s = state.subscriptions.find(s=>s.id===id);
+  openModal({
+    title: '💵 Paiement — ' + s.nom, narrow:true,
+    bodyHtml:`
+      <p style="font-size:12.5px;color:var(--ink-soft);">Encours actuel : <b>${fmt(s.encoursCredit||0)}</b> FCFA · Échéance : <b>${fmtDate(s.dateLimitePaiement)}</b></p>
+      <form id="creditPayForm">
+        <div class="field full"><label>Montant payé (FCFA)</label><input required type="number" min="0" step="500" name="montant" value="${s.encoursCredit||0}"></div>
+        <div class="field full"><label>Date du paiement</label><input required type="date" name="date" value="${todayISO()}"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer le paiement</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#creditPayForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const f = new FormData(e.target);
+        const montant = Number(f.get('montant'))||0;
+        const datePaiement = f.get('date');
+        const enRetard = datePaiement > s.dateLimitePaiement;
+        s.encoursCredit = Math.max(0, (Number(s.encoursCredit)||0) - montant);
+        s.historique = s.historique || [];
+        s.historique.push({ date: datePaiement, montant, type:'paiement', enRetard });
+        // Règle de renouvellement (protocole section 8)
+        if(s.encoursCredit > 0) s.statutFiabilite = 'impaye';
+        else s.statutFiabilite = enRetard ? 'retard' : 'bon';
+        s.dateLimitePaiement = addDaysISO(datePaiement, 30);
+        persist(); closeModal(); renderAbonnements();
+        toast(s.encoursCredit>0 ? 'Paiement partiel enregistré — solde restant dû' : (enRetard?'Paiement enregistré (en retard)':'Paiement enregistré — client à jour'));
+      });
+    }
+  });
+}
+function toggleCreditSuspension(id){
+  const s = state.subscriptions.find(s=>s.id===id);
+  if(s.statutFiabilite==='suspendu'){
+    s.statutFiabilite = 'bon'; persist(); renderAbonnements(); toast('Client réactivé');
+  } else {
+    passwordConfirmModal({
+      title:'Suspendre le crédit', confirmLabel:'Suspendre',
+      message:`Suspendre le crédit de ${escapeHtml(s.nom)} ? Il repassera en prépayé jusqu'à régularisation, et sa place de quota sera libérée.`,
+      onConfirm(){ s.statutFiabilite = 'suspendu'; persist(); closeModal(); renderAbonnements(); toast('Crédit suspendu'); }
+    });
+  }
 }
 
 /* ========================================================
@@ -4167,24 +4741,36 @@ function printSubscriptionCard(id){
   const s = state.subscriptions.find(s=>s.id===id);
   if(!s) return;
   const sousLigne = s.type==='entreprise' ? `Contact : ${escapeHtml(s.contact||'—')}` : `Tél : ${escapeHtml(s.telephone||'—')}`;
+  const formuleLabel = (FORMULE_LABELS[s.formule]||'Abonnement').replace(/^[^\s]+\s/,'');
+  const droite = s.formule==='sejour' ? { l:'Valide du', v:fmtDate(s.dateDebut), l2:'au', v2:fmtDate(addDaysISO(s.dateDebut, Number(s.dureeJours)||1)) }
+    : s.formule==='legacy' ? { l:'Valide du', v:fmtDate(s.dateDebut), l2:'au', v2:fmtDate(s.dateExpiration) }
+    : { l:'Depuis le', v:fmtDate(s.dateDebut), l2:'', v2:'' };
   const body = `
   <div style="width:340px;margin:0 auto;border-radius:20px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.15);border:1px solid #E2E8E3;">
-    ${printBrandHeader('Carte de Fidélité' + (s.type==='entreprise'?' — Entreprise':''), 'linear-gradient(135deg,#C0273A,#8E1C2B)')}
+    ${printBrandHeader('Carte Nafa' + (s.type==='entreprise'?' — Entreprise':''), 'linear-gradient(135deg,#C0273A,#8E1C2B)')}
     <div style="padding:20px 18px;background:#fff;">
-      <div style="font-family:'Fraunces',serif;font-size:19px;font-weight:700;">${escapeHtml(s.nom)}</div>
-      <div style="font-size:12.5px;color:#5C6E67;margin-top:2px;">${sousLigne}</div>
+      <div style="display:flex;gap:14px;align-items:center;">
+        ${s.photo ? `<img src="${s.photo}" style="width:64px;height:64px;border-radius:14px;object-fit:cover;flex-shrink:0;">` : ''}
+        <div>
+          <div style="font-family:'Fraunces',serif;font-size:19px;font-weight:700;">${escapeHtml(s.nom)}</div>
+          <div style="font-size:12.5px;color:#5C6E67;margin-top:2px;">${sousLigne}</div>
+        </div>
+      </div>
       <div style="margin-top:14px;display:flex;justify-content:space-between;font-size:12px;">
-        <div><div style="color:#93A29B;">Abonnement</div><b>${escapeHtml(s.typeAbonnement||'—')}</b></div>
+        <div><div style="color:#93A29B;">Formule</div><b>${escapeHtml(formuleLabel)}</b></div>
         <div style="text-align:right;"><div style="color:#93A29B;">N°</div><b>${escapeHtml(s.id)}</b></div>
       </div>
       <div style="margin-top:10px;display:flex;justify-content:space-between;font-size:12px;">
-        <div><div style="color:#93A29B;">Valide du</div><b>${fmtDate(s.dateDebut)}</b></div>
-        <div style="text-align:right;"><div style="color:#93A29B;">au</div><b>${fmtDate(s.dateExpiration)}</b></div>
+        <div><div style="color:#93A29B;">Solde</div><b>${subSoldeCellHtml(s).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim()}</b></div>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:space-between;font-size:12px;">
+        <div><div style="color:#93A29B;">${droite.l}</div><b>${droite.v}</b></div>
+        ${droite.v2?`<div style="text-align:right;"><div style="color:#93A29B;">${droite.l2}</div><b>${droite.v2}</b></div>`:''}
       </div>
     </div>
     ${printBrandFooter()}
   </div>`;
-  openPrintWindow('Carte de fidélité — ' + s.nom, body);
+  openPrintWindow('Carte Nafa — ' + s.nom, body);
 }
 
 function printMenuDuJour(){
@@ -4231,33 +4817,62 @@ function openPaymentForm(employeeId){
   const e = state.employees.find(e=>e.id===employeeId);
   if(!e) return;
   const moisActuel = new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
-  const jours = joursDepuisCycle(e);
-  const montantBaseProrata = Math.round((Number(e.salaire)||0) / CYCLE_PAIE_JOURS * jours);
+  const jRef = CYCLE_PAIE_JOURS();
+  const joursCycle = joursDepuisCycle(e);
+  let jours = joursCycle; // modifiable dans le formulaire (absences, départ…) : le montant suit
   const ancJours = ancienneteJours(e.dateEmbauche);
   const primeRate = primeAncienneteRate(e);
-  const primeMontant = Math.round(montantBaseProrata * primeRate / 100);
-  const montantSuggere = montantBaseProrata + primeMontant;
+  // Deux bases possibles pour le salaire mensuel : salaire fixe, ou part de la masse salariale liée au CA
+  const sug = computeSuggestedSalaries();
+  const sugRow = sug.rows.find(r=>r.employee.id===e.id);
+  const mix = computeMixedSalaries();
+  const mixRow = mix.rows.find(r=>r.employee.id===e.id);
+  const refs = { fixe: Number(e.salaire)||0, ca: sugRow ? sugRow.suggere : null, mixte: mixRow ? mixRow.total : null };
+  const calc = (ref) => { const base = Math.round(ref / jRef * jours); const prime = Math.round(base * primeRate / 100); return { base, prime, total: base + prime }; };
+  const computeCalcs = () => ({ fixe: calc(refs.fixe), ca: refs.ca!==null ? calc(refs.ca) : null, mixte: refs.mixte!==null ? calc(refs.mixte) : null });
+  let calcs = computeCalcs();
+  const modeSetting = ['fixe','ca','mixte'].includes(state.settings.salaireBaseMode) ? state.settings.salaireBaseMode : 'mixte';
+  const modeDefaut = refs[modeSetting]!==null ? modeSetting : 'fixe';
+  const modeLabel = { fixe:'fixe', ca:'lié au CA', mixte:'mixte' };
   const estAbandon = e.statut === 'Inactif';
-  const estComplet = jours >= CYCLE_PAIE_JOURS;
+  const estComplet = joursCycle >= jRef;
   const noteCycle = estAbandon
-    ? `⚠️ Employé inactif : ${jours} jour(s) travaillé(s) depuis le ${fmtDate(cycleStartDate(e))} — paiement au prorata proposé (départ avant le cycle complet de ${CYCLE_PAIE_JOURS} jours).`
+    ? `⚠️ Employé inactif : ${joursCycle} jour(s) travaillé(s) depuis le ${fmtDate(cycleStartDate(e))} — paiement au prorata des jours travaillés.`
     : estComplet
-      ? `✅ ${jours} jour(s) travaillé(s) depuis le dernier paiement — cycle de ${CYCLE_PAIE_JOURS} jours atteint, paiement complet proposé.`
-      : `⏳ Seulement ${jours} jour(s) travaillé(s) sur ${CYCLE_PAIE_JOURS} requis pour un paiement complet — vous pouvez quand même enregistrer une avance au prorata si besoin.`;
+      ? `✅ ${joursCycle} jour(s) travaillé(s) depuis le dernier paiement — cycle de ${jRef} jours atteint, paiement complet proposé.`
+      : `💰 ${joursCycle} jour(s) travaillé(s) sur ${jRef} : l'employé est payé pour les jours réellement travaillés (paiement au prorata, sans attendre la fin du cycle).`;
+  const calcBoxHtml = (mode) => {
+    const ref = refs[mode], c = calcs[mode];
+    return `
+      <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:.04em;">Détail transparent du calcul</div>
+      <div style="font-size:11px;color:var(--ink-soft);font-style:italic;">Salaire à payer = Salaire mensuel × (jours travaillés / jours de référence) + Prime d'ancienneté</div>
+      ${mode==='ca' ? `<div style="font-size:11.5px;color:var(--ink-soft);">CA de ${escapeHtml(sug.caRef.label)} : ${fcfa(sug.caRef.ca)} × ${tauxMasseSalarialePct()}% = masse salariale ${fcfa(sug.budget)} · part de ${escapeHtml(e.nom)} : ${Math.round(sugRow.part*1000)/10}%</div>` : ''}
+      ${mode==='mixte' ? `<div style="font-size:11.5px;color:var(--ink-soft);">CA de ${escapeHtml(sug.caRef.label)} : ${fcfa(sug.caRef.ca)} × ${tauxMasseSalarialePct()}% = ${fcfa(mix.budget)} · fixes garantis de l'équipe ${fcfa(mix.totalGaranti)} · masse variable ${fcfa(mix.pool)} · part de ${escapeHtml(e.nom)} : ${Math.round(mixRow.part*1000)/10}%</div>
+        <div style="display:flex;justify-content:space-between;"><span>Fixe garanti (${partFixeGarantiePct()}% de ${fmt(refs.fixe)}${mixRow.garanti>Math.round(refs.fixe*partFixeGarantiePct()/100)?', relevé au minimum garanti':''})</span><b>${fmt(mixRow.garanti)}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>Prime variable liée au CA</span><b>${fmt(mixRow.variable)}</b></div>` : ''}
+      <div style="display:flex;justify-content:space-between;"><span>Salaire mensuel (${modeLabel[mode]})</span><b>${fmt(ref)}</b></div>
+      <div style="display:flex;justify-content:space-between;"><span>Salaire de base (${jours}j / ${jRef}j)</span><b>${fmt(c.base)}</b></div>
+      <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté (${ancJours} j, soit ${Math.round(primeRate*10)/10}%)</span><b>${fmt(c.prime)}</b></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:4px;margin-top:2px;"><span style="font-weight:700;">Total suggéré</span><b>${fmt(c.total)}</b></div>`;
+  };
   openModal({
     title: 'Payer le salaire — ' + e.nom,
     bodyHtml:`
       <p style="font-size:12px;color:${estAbandon||!estComplet?'var(--bissap-dark)':'var(--leaf-dark)'};background:${estAbandon||!estComplet?'var(--bissap-tint)':'var(--leaf-tint)'};padding:8px 10px;border-radius:8px;line-height:1.5;">${noteCycle}</p>
-      <div style="font-size:12px;background:var(--line-soft);border-radius:8px;padding:10px 12px;margin-top:8px;display:flex;flex-direction:column;gap:4px;">
-        <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:.04em;">Détail transparent du calcul</div>
-        <div style="display:flex;justify-content:space-between;"><span>Salaire de base (${jours}j / ${CYCLE_PAIE_JOURS}j)</span><b>${fmt(montantBaseProrata)}</b></div>
-        <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté (${ancJours} j, soit ${Math.round(primeRate*10)/10}%)</span><b>${fmt(primeMontant)}</b></div>
-        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:4px;margin-top:2px;"><span style="font-weight:700;">Total suggéré</span><b>${fmt(montantSuggere)}</b></div>
+      <div class="field full" style="margin-top:10px;"><label>Base du salaire mensuel</label>
+        <select id="payBaseMode" name="baseModeUi">
+          <option value="fixe" ${modeDefaut==='fixe'?'selected':''}>Salaire fixe — ${fmt(refs.fixe)} FCFA / mois</option>
+          <option value="mixte" ${modeDefaut==='mixte'?'selected':''} ${refs.mixte===null?'disabled':''}>Mixte : fixe garanti + prime CA — ${refs.mixte===null?'indisponible (employé inactif)':fmt(refs.mixte)+' FCFA / mois'}</option>
+          <option value="ca" ${modeDefaut==='ca'?'selected':''} ${refs.ca===null?'disabled':''}>Lié au CA seul (${tauxMasseSalarialePct()}% du CA) — ${refs.ca===null?'indisponible (employé inactif)':fmt(refs.ca)+' FCFA / mois'}</option>
+        </select>
       </div>
+      <div id="salaryCalcBox" style="font-size:12px;background:var(--line-soft);border-radius:8px;padding:10px 12px;margin-top:8px;display:flex;flex-direction:column;gap:4px;">${calcBoxHtml(modeDefaut)}</div>
       <form id="paymentForm">
         <div class="form-grid">
+          <div class="field"><label>Jours travaillés</label><input required type="number" min="0" step="0.5" name="jours" id="payJours" value="${joursCycle}"></div>
+          <div class="field" style="justify-content:flex-end;"><span id="payDaysNote" style="font-size:11px;color:var(--ink-soft);line-height:1.4;">Jours écoulés depuis le ${fmtDate(cycleStartDate(e))} : ${joursCycle}. Modifiez si l'employé a été absent.</span></div>
           <div class="field full"><label>Période</label><input required name="periode" value="${moisActuel.charAt(0).toUpperCase()+moisActuel.slice(1)}" placeholder="Ex : Septembre 2026"></div>
-          <div class="field"><label>Montant payé (FCFA)</label><input required type="number" min="0" name="montant" value="${montantSuggere}"></div>
+          <div class="field"><label>Montant payé (FCFA)</label><input required type="number" min="0" name="montant" id="payMontant" value="${calcs[modeDefaut].total}"></div>
           <div class="field"><label>Date de paiement</label><input required type="date" name="date" value="${todayISO()}"></div>
           <div class="field full"><label>Mode de paiement</label>
             <select name="mode"><option>Espèces</option><option>Mobile Money</option><option>Virement bancaire</option><option>Chèque</option></select>
@@ -4269,14 +4884,34 @@ function openPaymentForm(employeeId){
         </div>
       </form>`,
     onMount(overlay){
+      const modeSel = overlay.querySelector('#payBaseMode');
+      modeSel.addEventListener('change', ()=>{
+        const m = modeSel.value;
+        overlay.querySelector('#salaryCalcBox').innerHTML = calcBoxHtml(m);
+        overlay.querySelector('#payMontant').value = calcs[m].total; // le montant suit la base choisie (modifiable ensuite)
+      });
+      const joursInput = overlay.querySelector('#payJours');
+      joursInput.addEventListener('input', ()=>{
+        jours = Math.max(0, Number(joursInput.value)||0);
+        calcs = computeCalcs();
+        const m = modeSel.value;
+        overlay.querySelector('#salaryCalcBox').innerHTML = calcBoxHtml(m);
+        overlay.querySelector('#payMontant').value = calcs[m].total; // le montant évolue avec les jours travaillés
+        overlay.querySelector('#payDaysNote').innerHTML = jours < joursCycle
+          ? `⚠️ ${Math.round((joursCycle-jours)*10)/10} jour(s) écoulé(s) ne seront pas payés : le prochain cycle repartira après la date de ce paiement.`
+          : `Jours écoulés depuis le ${fmtDate(cycleStartDate(e))} : ${joursCycle}.`;
+      });
       overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
       overlay.querySelector('#paymentForm').addEventListener('submit',(ev)=>{
         ev.preventDefault();
         const f = new FormData(ev.target);
+        const m = modeSel.value, c = calcs[m];
         const payment = {
           id: uid('PAY'), employeeId, periode: f.get('periode').trim(), montant: Number(f.get('montant')),
           date: f.get('date'), mode: f.get('mode'), payePar: currentUser.nom, categorie: 'Salaire',
-          salaireBase: montantBaseProrata, primeAncienneteTaux: Math.round(primeRate*10)/10, primeAncienneteMontant: primeMontant, joursTravailles: jours,
+          baseMode: m, salaireReference: refs[m],
+          ...(m==='mixte' ? { fixeGaranti: mixRow.garanti, primeVariable: mixRow.variable } : {}),
+          salaireBase: c.base, primeAncienneteTaux: Math.round(primeRate*10)/10, primeAncienneteMontant: c.prime, joursTravailles: jours,
         };
         state.salaryPayments.push(payment);
         persist(); closeModal();
@@ -4321,6 +4956,8 @@ function printPayslip(paymentId){
       ${(!estGestion && p.salaireBase!==undefined) ? `
       <div style="margin-top:12px;background:#F3F6F3;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;font-size:12px;">
         <div style="font-weight:700;font-size:10px;text-transform:uppercase;color:#5C6E67;letter-spacing:.04em;">Détail du calcul (transparence)</div>
+        ${p.salaireReference!==undefined ? `<div style="display:flex;justify-content:space-between;"><span>Salaire mensuel (${p.baseMode==='ca'?'lié au CA':(p.baseMode==='mixte'?'mixte':'fixe')})</span><b>${fmt(p.salaireReference)}</b></div>` : ''}
+        ${p.baseMode==='mixte' && p.fixeGaranti!==undefined ? `<div style="display:flex;justify-content:space-between;color:#5C6E67;"><span>&nbsp;&nbsp;↳ dont fixe garanti</span><span>${fmt(p.fixeGaranti)}</span></div><div style="display:flex;justify-content:space-between;color:#5C6E67;"><span>&nbsp;&nbsp;↳ dont prime variable CA</span><span>${fmt(p.primeVariable||0)}</span></div>` : ''}
         <div style="display:flex;justify-content:space-between;"><span>Salaire de base (${p.joursTravailles||0}j travaillés)</span><b>${fmt(p.salaireBase)}</b></div>
         <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté (${p.primeAncienneteTaux||0}%)</span><b>${fmt(p.primeAncienneteMontant||0)}</b></div>
       </div>` : ''}
@@ -4610,6 +5247,11 @@ function renderParametres(){
   $('#settingsCongeCycle').value = state.settings.congeCycleStart || '2026-08-01';
   $('#settingsPrimeParAn').value = state.settings.primeAncienneteParAn;
   $('#settingsPrimeMax').value = state.settings.primeAncienneteMax;
+  $('#settingsJoursReference').value = state.settings.joursReferenceSalaire || 30;
+  $('#settingsTauxMasse').value = tauxMasseSalarialePct();
+  $('#settingsSalaireMode').value = state.settings.salaireBaseMode || 'mixte';
+  $('#settingsPartFixe').value = partFixeGarantiePct();
+  $('#settingsSalaireMin').value = Number(state.settings.salaireMinimum) || 0;
   $('#restGroupsCountDisplay').textContent = restGroupsCount() + ' groupe(s) — ' + restCycleDays() + ' jours de cycle';
   $('#restGroupsListPreview').innerHTML = Array.from({length:restGroupsCount()},(_,i)=>i+1).map(s=>{
     const r = restSlotRange(s);
@@ -4636,6 +5278,11 @@ function saveSettings(e){
   state.settings.congeCycleStart = $('#settingsCongeCycle').value || state.settings.congeCycleStart;
   state.settings.primeAncienneteParAn = Number($('#settingsPrimeParAn').value) || 0;
   state.settings.primeAncienneteMax = Number($('#settingsPrimeMax').value) || 0;
+  state.settings.joursReferenceSalaire = Math.max(Number($('#settingsJoursReference').value) || 30, 1);
+  state.settings.tauxMasseSalariale = Math.min(100, Math.max(Number($('#settingsTauxMasse').value) || 21, 1));
+  state.settings.salaireBaseMode = ['fixe','ca','mixte'].includes($('#settingsSalaireMode').value) ? $('#settingsSalaireMode').value : 'mixte';
+  state.settings.partFixeGarantiePct = Math.min(100, Math.max(Number($('#settingsPartFixe').value) || 0, 0));
+  state.settings.salaireMinimum = Math.max(Number($('#settingsSalaireMin').value) || 0, 0);
   persist(); applyBranding(); toast('Paramètres enregistrés');
 }
 
@@ -4902,9 +5549,11 @@ async function init(){
   // Abonnements
   $('#btnAddSubscription').addEventListener('click', ()=>openSubscriptionForm());
   $('#subsSearch').addEventListener('input', debounce((e)=>{ subsFilter.q=e.target.value; renderAbonnements(); }));
+  $('#subsFormuleFilter').addEventListener('change', (e)=>{ subsFilter.formule=e.target.value; renderAbonnements(); });
   $('#subsTypeFilter').addEventListener('change', (e)=>{ subsFilter.type=e.target.value; renderAbonnements(); });
   $('#subsStatutFilter').addEventListener('change', (e)=>{ subsFilter.statut=e.target.value; renderAbonnements(); });
   $('#btnWipeSubs').addEventListener('click', ()=>wipeModule('subscriptions','Abonnements'));
+  $('#btnCreditSettings').addEventListener('click', openCreditSettingsModal);
   $('#btnPrintMenuDuJour').addEventListener('click', printMenuDuJour);
 
   // Équipes
