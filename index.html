@@ -1399,12 +1399,20 @@ function ensureDataIntegrity(){
     state.shoppingLists = {};
     changed = true;
   }
-  // Ancienne liste de courses unique (à plat) : on la rattache à la liste de stock par défaut
+  // Ancienne liste de courses unique à plat (avant l'introduction des listes multiples) : convertie en la première liste nommée
   if(Array.isArray(state.shoppingList) && state.shoppingList.length && !(state.shoppingLists[defaultStockListId]||[]).length){
-    state.shoppingLists[defaultStockListId] = state.shoppingList;
+    state.shoppingLists[defaultStockListId] = [{id:uid('SHL'), nom:'Liste principale', items: state.shoppingList}];
     changed = true;
   }
-  state.stockLists.forEach(l=>{ if(!Array.isArray(state.shoppingLists[l.id])){ state.shoppingLists[l.id] = []; changed = true; } });
+  // Chaque liste de stock peut désormais contenir PLUSIEURS listes à acheter nommées (au lieu d'une seule à plat)
+  state.stockLists.forEach(l=>{
+    const cur = state.shoppingLists[l.id];
+    if(!Array.isArray(cur)){ state.shoppingLists[l.id] = []; changed = true; }
+    else if(cur.length && cur.some(x=>!x || !Array.isArray(x.items))){
+      state.shoppingLists[l.id] = [{id:uid('SHL'), nom:'Liste 1', items: cur}];
+      changed = true;
+    }
+  });
   if(changed) persist(true);
 }
 
@@ -3055,15 +3063,68 @@ function shoppingRowHtml(item){
     <button type="button" class="icon-btn danger" title="Retirer" data-remove-shop-row="${rid}" style="margin-bottom:1px;">🗑️</button>
   </div>`;
 }
-function openShoppingListModal(listId){
-  listId = listId || ensureStockActiveList();
-  const list = state.stockLists.find(l=>l.id===listId);
-  const items = state.shoppingLists[listId] || (state.shoppingLists[listId] = []);
+/* ---- Sélecteur : plusieurs listes à acheter nommées par liste de stock, sans jamais s'écraser entre elles ---- */
+function openShoppingListsPicker(stockListId){
+  stockListId = stockListId || ensureStockActiveList();
+  const stockList = state.stockLists.find(l=>l.id===stockListId);
+  const lists = state.shoppingLists[stockListId] || (state.shoppingLists[stockListId] = []);
   openModal({
-    title: '📝 Liste à acheter — ' + (list ? list.nom : ''),
+    title: '📝 Listes à acheter — ' + (stockList ? stockList.nom : ''),
+    bodyHtml: `
+      <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">Créez autant de listes à acheter que nécessaire pour « ${escapeHtml(stockList?stockList.nom:'')} » (ex : commande urgente, commande hebdomadaire…) — en créer une nouvelle ne touche pas aux autres.</p>
+      <div id="shoppingListsRows" style="display:flex;flex-direction:column;gap:8px;">
+        ${lists.length ? lists.map(sl=>{
+          const total = (sl.items||[]).reduce((s,i)=>s+(Number(i.prix)||0),0);
+          return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;">
+            <div><b>${escapeHtml(sl.nom)}</b><span style="color:var(--ink-soft);font-size:12px;margin-left:8px;">${(sl.items||[]).length} article(s) · ${fmt(total)} FCFA</span></div>
+            <div class="row-actions">
+              <button class="icon-btn" title="Ouvrir" onclick="closeModal(); openShoppingListModal('${stockListId}','${sl.id}')">✏️</button>
+              <button class="icon-btn" title="Imprimer" onclick="printShoppingList('${stockListId}','${sl.id}')">🖨️</button>
+              <button class="icon-btn danger" title="Supprimer cette liste" onclick="deleteShoppingList('${stockListId}','${sl.id}')">🗑️</button>
+            </div>
+          </div>`;
+        }).join('') : `<p style="font-size:12.5px;color:var(--ink-faint);">Aucune liste à acheter pour l'instant.</p>`}
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" data-cancel>Fermer</button>
+        <button type="button" class="btn btn-primary" id="btnNewShoppingList">➕ Nouvelle liste</button>
+      </div>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#btnNewShoppingList').addEventListener('click', ()=>{
+        const nom = (prompt('Nom de la nouvelle liste à acheter :', 'Liste ' + (lists.length+1)) || '').trim();
+        if(!nom) return;
+        const newList = { id: uid('SHL'), nom, items: [] };
+        lists.push(newList);
+        persist(); closeModal();
+        openShoppingListModal(stockListId, newList.id);
+      });
+    }
+  });
+}
+function deleteShoppingList(stockListId, shoppingListId){
+  const lists = state.shoppingLists[stockListId] || [];
+  const sl = lists.find(x=>x.id===shoppingListId);
+  if(!sl) return;
+  confirmModal({ message:`Supprimer la liste « ${escapeHtml(sl.nom)} » ? Cette action est irréversible.`,
+    onConfirm(){
+      state.shoppingLists[stockListId] = lists.filter(x=>x.id!==shoppingListId);
+      persist(); closeModal();
+      openShoppingListsPicker(stockListId);
+    }
+  });
+}
+function openShoppingListModal(stockListId, shoppingListId){
+  const stockList = state.stockLists.find(l=>l.id===stockListId);
+  const lists = state.shoppingLists[stockListId] || (state.shoppingLists[stockListId] = []);
+  const shoppingList = lists.find(x=>x.id===shoppingListId);
+  if(!shoppingList){ openShoppingListsPicker(stockListId); return; }
+  const items = shoppingList.items || (shoppingList.items = []);
+  openModal({
+    title: '📝 ' + shoppingList.nom + ' — ' + (stockList ? stockList.nom : ''),
     bodyHtml:`
       <p style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;">
-        Cette liste de courses est propre à « ${escapeHtml(list?list.nom:'')} ». Modifiez librement les lignes, ajoutez-en, ou remplissez automatiquement avec les articles de cette liste actuellement sous leur seuil d'alerte.
+        Cette liste de courses est indépendante des autres listes de « ${escapeHtml(stockList?stockList.nom:'')} ». Modifiez librement les lignes, ajoutez-en, ou remplissez automatiquement avec les articles de cette liste de stock actuellement sous leur seuil d'alerte.
         Le prix est le montant total pour la ligne (pas le prix unitaire).
       </p>
       <div class="form-actions" style="justify-content:flex-start;margin:0 0 12px;padding:0;border:none;">
@@ -3075,8 +3136,8 @@ function openShoppingListModal(listId){
         <div style="font-size:13.5px;">Total : <b class="mono" id="shoppingTotalDisplay" style="font-size:16px;">0 FCFA</b></div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn btn-ghost" data-cancel>Fermer</button>
-        <button type="button" class="btn btn-soft" id="btnClearShopping">🗑️ Vider la liste</button>
+        <button type="button" class="btn btn-ghost" data-cancel>← Retour aux listes</button>
+        <button type="button" class="btn btn-soft" id="btnClearShopping">🗑️ Vider cette liste</button>
         <button type="button" class="btn btn-primary" id="btnSaveAndPrintShopping">🖨️ Enregistrer &amp; imprimer</button>
       </div>`,
     onMount(overlay){
@@ -3087,13 +3148,13 @@ function openShoppingListModal(listId){
         totalDisplay.textContent = fcfa(total);
       };
       rowsBox.addEventListener('input', (e)=>{ if(e.target.classList.contains('shop-calc')) recalcTotal(); });
-      overlay.querySelector('[data-cancel]').addEventListener('click', ()=>{ saveShoppingListFromForm(overlay, listId); closeModal(); });
+      overlay.querySelector('[data-cancel]').addEventListener('click', ()=>{ saveShoppingListFromForm(overlay, stockListId, shoppingListId); closeModal(); openShoppingListsPicker(stockListId); });
       overlay.querySelector('#btnAddShoppingRow').addEventListener('click', ()=>{
         rowsBox.insertAdjacentHTML('beforeend', shoppingRowHtml(null));
       });
       overlay.querySelector('#btnAutoFillShopping').addEventListener('click', ()=>{
         const existingNames = $$('[data-shop-row]', overlay).map(r=>r.querySelector('[data-role="nom"]').value.trim().toLowerCase());
-        const alerts = itemsOfStockList(listId).filter(s=> Number(s.actuel) < Number(s.min) && !existingNames.includes(s.nom.toLowerCase()));
+        const alerts = itemsOfStockList(stockListId).filter(s=> Number(s.actuel) < Number(s.min) && !existingNames.includes(s.nom.toLowerCase()));
         if(!alerts.length){ toast('Aucun nouvel article en alerte à ajouter'); return; }
         alerts.forEach(s=>{
           rowsBox.insertAdjacentHTML('beforeend', shoppingRowHtml({ nom:s.nom, quantite: Math.max(s.min*2 - s.actuel, s.min), unite:s.unite, prix:'', note:'Sous le seuil d\'alerte' }));
@@ -3106,19 +3167,22 @@ function openShoppingListModal(listId){
         if(rm){ overlay.querySelector(`[data-shop-row="${rm.dataset.removeShopRow}"]`).remove(); recalcTotal(); }
       });
       overlay.querySelector('#btnClearShopping').addEventListener('click', ()=>{
-        confirmModal({ message:'Vider cette liste d\'achats ?', onConfirm(){ rowsBox.innerHTML=''; state.shoppingLists[listId]=[]; persist(); toast('Liste vidée'); recalcTotal(); } });
+        confirmModal({ message:'Vider cette liste d\'achats ? (la liste elle-même n\'est pas supprimée)', onConfirm(){ rowsBox.innerHTML=''; shoppingList.items=[]; persist(); toast('Liste vidée'); recalcTotal(); } });
       });
       overlay.querySelector('#btnSaveAndPrintShopping').addEventListener('click', ()=>{
-        saveShoppingListFromForm(overlay, listId);
+        saveShoppingListFromForm(overlay, stockListId, shoppingListId);
         closeModal();
-        printShoppingList(listId);
+        printShoppingList(stockListId, shoppingListId);
       });
       recalcTotal();
     }
   });
 }
-function saveShoppingListFromForm(overlay, listId){
-  state.shoppingLists[listId] = $$('[data-shop-row]', overlay).map(row=>({
+function saveShoppingListFromForm(overlay, stockListId, shoppingListId){
+  const lists = state.shoppingLists[stockListId] || [];
+  const shoppingList = lists.find(x=>x.id===shoppingListId);
+  if(!shoppingList) return;
+  shoppingList.items = $$('[data-shop-row]', overlay).map(row=>({
     nom: row.querySelector('[data-role="nom"]').value.trim(),
     quantite: row.querySelector('[data-role="quantite"]').value,
     unite: row.querySelector('[data-role="unite"]').value.trim(),
@@ -3127,9 +3191,11 @@ function saveShoppingListFromForm(overlay, listId){
   })).filter(i=>i.nom);
   persist();
 }
-function printShoppingList(listId){
-  const list = state.stockLists.find(l=>l.id===listId);
-  const items = state.shoppingLists[listId] || [];
+function printShoppingList(stockListId, shoppingListId){
+  const list = state.stockLists.find(l=>l.id===stockListId);
+  const lists = state.shoppingLists[stockListId] || [];
+  const shoppingList = lists.find(x=>x.id===shoppingListId);
+  const items = shoppingList ? (shoppingList.items||[]) : [];
   const total = items.reduce((s,i)=> s + (Number(i.prix)||0), 0);
   const rows = items.map(i=>`<tr style="border-top:1px solid #EEF2EE;">
     <td style="padding:8px 6px;width:26px;"><span style="display:inline-block;width:16px;height:16px;border:2px solid #164F4C;border-radius:4px;"></span></td>
@@ -3138,7 +3204,7 @@ function printShoppingList(listId){
     <td style="padding:8px 6px;font-size:11.5px;color:#5C6E67;">${escapeHtml(i.note||'')}</td>
     <td style="padding:8px 6px;border-left:1px dashed #E2E8E3;text-align:right;font-size:13px;font-weight:700;">${i.prix?fmt(i.prix):''}</td>
   </tr>`).join('');
-  const title = 'Liste à acheter — ' + (list ? list.nom : '');
+  const title = (shoppingList ? shoppingList.nom : 'Liste à acheter') + ' — ' + (list ? list.nom : '');
   const body = `
   <div style="width:420px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
     ${printBrandHeader(title, 'linear-gradient(135deg,#2F8F63,#206B48)')}
@@ -5497,7 +5563,7 @@ async function init(){
   $('#btnExportVentes').addEventListener('click', exportVentesCSV);
 
   // Stock
-  $('#btnShoppingList').addEventListener('click', ()=>openShoppingListModal(stockActiveListId));
+  $('#btnShoppingList').addEventListener('click', ()=>openShoppingListsPicker(stockActiveListId));
   $('#btnAddStock').addEventListener('click', ()=>openStockForm());
   $('#stockSearch').addEventListener('input', debounce((e)=>{ stockFilter.q=e.target.value; renderStock(); }));
   $('#stockStatusFilter').addEventListener('change', (e)=>{ stockFilter.status=e.target.value; renderStock(); });
