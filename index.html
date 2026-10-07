@@ -390,7 +390,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
     <div class="login-brand">
       <div class="brand-mark" style="width:52px;height:52px;font-size:24px;">🍽️</div>
       <div>
-        <div class="login-title" id="loginBrandName">Chez Awa</div>
+        <div class="login-title" id="loginBrandName">Saveur Nafa</div>
         <div class="login-sub">Connexion à l'espace de gestion</div>
       </div>
     </div>
@@ -417,7 +417,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
     <div class="brand">
       <div class="brand-mark">🍽️</div>
       <div class="brand-text">
-        <div class="name" id="brandName">Chez Awa</div>
+        <div class="name" id="brandName">Saveur Nafa</div>
         <div class="place" id="brandPlace">Touba, Sénégal</div>
       </div>
     </div>
@@ -489,6 +489,16 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
           <button class="btn btn-ghost" id="btnDailyReport">🖨️ Rapport du jour</button>
         </div>
         <div class="kpi-grid" id="dashKpis"></div>
+
+        <div class="panel" data-roles="admin" style="margin-bottom:22px;">
+          <div class="panel-head">
+            <div><h3>📷 Réalité</h3><div class="desc">Ce que le restaurant a réellement gagné, dépensé et doit, là maintenant — pour voir vite si ça commence à déraper.</div></div>
+          </div>
+          <div class="panel-body">
+            <div id="realiteAlerte" style="margin-bottom:12px;"></div>
+            <div class="kpi-grid" id="realiteKpis" style="grid-template-columns:repeat(3,1fr);margin-bottom:0;"></div>
+          </div>
+        </div>
 
         <div class="panel" data-roles="admin" style="margin-bottom:22px;">
           <div class="panel-head">
@@ -737,7 +747,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         <div class="toolbar">
           <div class="search-box"><span class="ic">🔎</span><input id="employesSearch" placeholder="Rechercher un nom ou un poste…"></div>
           <select class="select-filter" id="employesStatutFilter">
-            <option value="">Tous statuts</option><option>Actif</option><option>Inactif</option>
+            <option value="">Tous statuts</option><option>Actif</option><option>Inactif</option><option>Fin de contrat</option>
           </select>
           <span class="pill pill-neutral" id="employesTotalTag"></span>
           <div class="spacer"></div>
@@ -766,7 +776,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
                     <div id="recruitPhotoPreview" style="width:64px;height:64px;border-radius:14px;background:var(--line-soft);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--ink-faint);overflow:hidden;flex-shrink:0;">👤</div>
                     <label class="btn btn-soft btn-sm" style="cursor:pointer;">📷 Choisir une photo<input type="file" id="recruitPhotoInput" accept="image/*" style="display:none;"></label>
                   </div>
-                  <div class="field full"><label>Nom et prénom</label><input required name="nom" placeholder="Ex : Awa Diallo"></div>
+                  <div class="field full"><label>Nom et prénom</label><input required name="nom" placeholder="Ex : Fatou Diallo"></div>
                   <div class="field"><label>Poste</label><input required name="poste" placeholder="Serveur, Cuisinier…"></div>
                   <div class="field"><label>Téléphone</label><input required name="telephone" placeholder="77 123 45 67"></div>
                   <div class="field"><label>Date d'embauche</label><input required type="date" name="dateEmbauche"></div>
@@ -785,7 +795,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
                   <div class="field" data-roles="admin"><label>Niveau de responsabilité <span class="hint">(1–5)</span></label><input type="number" min="1" max="5" name="niveauResponsabilite" value="3"></div>
                   <div class="field" data-roles="admin"><label>Compétences <span class="hint">(1–5)</span></label><input type="number" min="1" max="5" name="competences" value="3"></div>
                   <div class="field" data-roles="admin"><label>Expérience <span class="hint">(années)</span></label><input type="number" min="0" name="experienceAnnees" value="0"></div>
-                  <div class="field"><label>Statut</label><select name="statut"><option>Actif</option><option>Inactif</option></select></div>
+                  <div class="field"><label>Statut</label><select name="statut"><option>Actif</option><option>Inactif</option><option>Fin de contrat</option></select></div>
                 </div>
                 <div class="form-actions"><button type="submit" class="btn btn-primary">➕ Recruter cet employé</button></div>
               </form>
@@ -988,8 +998,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
                   <div class="field"><label>Ville</label><input id="settingsVille" name="ville"></div>
                   <div class="field"><label>Devise</label><input id="settingsDevise" name="devise"></div>
                   <div class="field"><label>Référence du cycle de repos <span class="hint">(Jour 1 de la rotation A→G)</span></label><input type="date" id="settingsCongeCycle" name="congeCycleStart"></div>
-                  <div class="field"><label>Prime d'ancienneté <span class="hint">(% par année d'ancienneté)</span></label><input type="number" min="0" step="0.1" id="settingsPrimeParAn" name="primeAncienneteParAn"></div>
-                  <div class="field"><label>Prime d'ancienneté — plafond <span class="hint">(% maximum, quelle que soit l'ancienneté)</span></label><input type="number" min="0" step="1" id="settingsPrimeMax" name="primeAncienneteMax"></div>
+                  <div class="field"><label>Prime d'ancienneté <span class="hint">(montant fixe en FCFA, identique pour tous les employés)</span></label><input type="number" min="0" step="1" id="settingsPrimeFixe" name="primeAncienneteMontant"></div>
                   <div class="field"><label>Jours de référence pour le salaire <span class="hint">Salaire à payer = Salaire mensuel × (jours travaillés / jours de référence)</span></label><input type="number" min="1" step="1" id="settingsJoursReference" name="joursReferenceSalaire"></div>
                   <div class="field"><label>Masse salariale liée au CA <span class="hint">(% du CA du mois réparti entre les employés actifs)</span></label><input type="number" min="1" max="100" step="0.5" id="settingsTauxMasse" name="tauxMasseSalariale"></div>
                   <div class="field"><label>Base du salaire mensuel <span class="hint">(proposée par défaut à chaque paiement)</span></label>
@@ -1209,7 +1218,7 @@ function monthKey(dateStr){ return dateStr.slice(0,7); }
 function seedState(){
   const demoSupplierId = uid('SUP');
   return {
-    settings: { nom: "Chez Awa — Restaurant Sénégalais", ville: "Touba, Sénégal", devise: "FCFA", congeCycleStart: '2026-08-01', restGroupsCount: 7, primeAncienneteParAn: 1, primeAncienneteMax: 20, joursReferenceSalaire: 30, tauxMasseSalariale: 21, salaireBaseMode: 'mixte', salaireMixteMigre: true, partFixeGarantiePct: 75, salaireMinimum: 0,
+    settings: { nom: "Saveur Nafa — Restaurant Sénégalais", ville: "Touba, Sénégal", devise: "FCFA", congeCycleStart: '2026-08-01', restGroupsCount: 7, primeAncienneteMontant: 13811, joursReferenceSalaire: 30, tauxMasseSalariale: 21, salaireBaseMode: 'mixte', salaireMixteMigre: true, partFixeGarantiePct: 75, salaireMinimum: 0,
       credit: { quotaMax: 10, plafondGlobal: 100000, plafondParNiveau: {0:0, 1:10000, 2:20000, 3:30000} } },
     users: [
       {id:'admin', username:'admin', nom:'Administrateur Principal', role:'admin', passwordHash:'6051fc84a7a0d74c225fb18a496b09952da5642e60723ecae543298edd7d82d6'},
@@ -1369,8 +1378,7 @@ function ensureDataIntegrity(){
     if(!e.type){ e.type = 'Exploitation'; changed = true; } // par défaut : dépense récurrente, pas un investissement de démarrage
   });
   if(state.settings && !state.settings.congeCycleStart){ state.settings.congeCycleStart = '2026-08-01'; changed = true; }
-  if(state.settings && state.settings.primeAncienneteParAn === undefined){ state.settings.primeAncienneteParAn = 1; changed = true; }
-  if(state.settings && state.settings.primeAncienneteMax === undefined){ state.settings.primeAncienneteMax = 20; changed = true; }
+  if(state.settings && state.settings.primeAncienneteMontant === undefined){ state.settings.primeAncienneteMontant = 13811; changed = true; }
   if(state.settings && !state.settings.joursReferenceSalaire){ state.settings.joursReferenceSalaire = 30; changed = true; }
   if(state.settings && !(Number(state.settings.tauxMasseSalariale) > 0)){ state.settings.tauxMasseSalariale = 21; changed = true; }
   if(state.settings && !['fixe','ca','mixte'].includes(state.settings.salaireBaseMode)){ state.settings.salaireBaseMode = 'mixte'; changed = true; }
@@ -1460,6 +1468,11 @@ function catColor(nom){
   return c ? c.couleur : '#8B9A93';
 }
 function activeEmployees(){ return state.employees.filter(e => e.statut === 'Actif'); }
+function employeeStatutBadge(e){
+  if(e.statut==='Fin de contrat') return '<span class="pill pill-danger">🏁 Fin de contrat</span>';
+  if(e.statut==='Actif') return '<span class="pill pill-ok">Actif</span>';
+  return '<span class="pill pill-neutral">Inactif</span>';
+}
 function distinctOrders(){ return new Set(state.sales.map(s => s.commande || s.id)).size; }
 function distinctOrdersOn(date){ return new Set(state.sales.filter(s=>s.date===date).map(s => s.commande || s.id)).size; }
 function salesCountOn(date){ return state.sales.filter(s=>s.date===date).length; }
@@ -1747,7 +1760,56 @@ Chart.defaults.plugins.legend.labels.boxWidth = 8;
 /* ========================================================
    PAGE : TABLEAU DE BORD
    ======================================================== */
+/* ---- Réalité : ce que le restaurant a vraiment gagné, dépensé et doit, à l'instant présent.
+   Sert d'alerte précoce — si les sorties dépassent les entrées, ou si les dettes dépassent la
+   trésorerie disponible, ou si le stock est sous seuil, le restaurant commence à déraper. ---- */
+function computeRealite(){
+  const mKey = todayISO().slice(0,7);
+  const caReel = monthlyVentesTotal(mKey);
+  const achatsReels = state.purchases.filter(p=>monthKey(p.date)===mKey).reduce((a,p)=>a+p.total, 0);
+  const depensesReelles = state.expenses.filter(e=>monthKey(e.date)===mKey).reduce((a,e)=>a+e.montant, 0);
+  const dettesCreees = state.suppliers.reduce((s,sup)=> s + Math.max(supplierBalance(sup.id), 0), 0);
+  // Argent disponible = flux de trésorerie du MOIS EN COURS uniquement (CA du mois − sorties du mois),
+  // pas le cumul depuis le début : les grosses dépenses d'investissement de démarrage ne doivent plus
+  // écraser ce chiffre, qui doit refléter la santé du mois en cours.
+  const salairesMois = state.salaryPayments.filter(p=>monthKey(p.date)===mKey).reduce((a,p)=>a+p.montant, 0);
+  const fournisseurPaiementsMois = state.supplierTransactions.filter(t=>t.type==='paiement' && monthKey(t.date)===mKey).reduce((a,t)=>a+t.montant, 0);
+  const treasuryMouvementsMois = state.treasuryMovements.filter(m=>monthKey(m.date)===mKey).reduce((a,m)=> a + (m.type==='entree' ? m.montant : -m.montant), 0);
+  const argentDisponible = caReel - achatsReels - depensesReelles - salairesMois - fournisseurPaiementsMois + treasuryMouvementsMois;
+  const stockAlertes = state.stock.filter(s=>Number(s.actuel) < Number(s.min)).length;
+  const stockTotal = state.stock.length;
+  return { mKey, caReel, achatsReels, depensesReelles, dettesCreees, argentDisponible, stockAlertes, stockTotal };
+}
+function renderRealite(){
+  const r = computeRealite();
+  const sorties = r.achatsReels + r.depensesReelles;
+  const signaux = [];
+  if(sorties > r.caReel) signaux.push("Ce mois-ci, les achats et dépenses réels dépassent le CA réel encaissé.");
+  if(r.dettesCreees > r.argentDisponible) signaux.push("Les dettes créées envers les fournisseurs dépassent ce que le mois en cours a généré comme argent disponible.");
+  if(r.stockAlertes > 0) signaux.push(r.stockAlertes + " article(s) de stock sont sous leur seuil d'alerte.");
+  const alerteBox = document.getElementById('realiteAlerte');
+  if(alerteBox) alerteBox.innerHTML = signaux.length
+    ? `<div style="background:var(--bissap-tint);color:var(--bissap-dark);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.6;"><b>⚠️ ${signaux.length} signal(aux) d'alerte — ça commence peut-être à déraper :</b><br>${signaux.map(s=>'• '+escapeHtml(s)).join('<br>')}</div>`
+    : `<div style="background:var(--leaf-tint);color:var(--leaf-dark);border-radius:10px;padding:10px 14px;font-size:13px;">✅ Aucun signal d'alerte pour le moment — les entrées couvrent les sorties, les dettes restent sous la trésorerie disponible, et le stock est correct.</div>`;
+  const cards = [
+    {label:'CA réel', value:fcfa(r.caReel), note:'Encaissé ce mois-ci', icon:'💰', accent:'--leaf', tint:'--leaf-tint'},
+    {label:'Achats réels', value:fcfa(r.achatsReels), note:'Payés aux fournisseurs ce mois-ci', icon:'🛒', accent:'--teal-800', tint:'--line-soft'},
+    {label:'Dépenses réelles', value:fcfa(r.depensesReelles), note:'Toutes dépenses ce mois-ci', icon:'🧾', accent:'--millet', tint:'--millet-tint'},
+    {label:'Dettes créées', value:fcfa(r.dettesCreees), neg:r.dettesCreees>0, note:'Dues aux fournisseurs, à ce jour', icon:'📒', accent: r.dettesCreees>0 ? '--bissap':'--leaf', tint: r.dettesCreees>0?'--bissap-tint':'--leaf-tint'},
+    {label:'Argent disponible', value:fcfa(r.argentDisponible), neg:r.argentDisponible<0, note:'Flux du mois en cours (CA − sorties), hors cumul passé', icon:'🏦', accent: r.argentDisponible>=0?'--sky':'--bissap', tint: r.argentDisponible>=0?'--sky-tint':'--bissap-tint'},
+    {label:'Stock restant', value:(r.stockTotal-r.stockAlertes)+' / '+r.stockTotal+' articles OK', neg:r.stockAlertes>0, note: r.stockAlertes>0 ? r.stockAlertes+' article(s) sous le seuil d\'alerte' : 'Aucun article en alerte', icon:'📦', accent: r.stockAlertes>0?'--bissap':'--leaf', tint: r.stockAlertes>0?'--bissap-tint':'--leaf-tint'},
+  ];
+  const box = document.getElementById('realiteKpis');
+  if(box) box.innerHTML = cards.map(k=>`
+    <div class="kpi-card" style="--accent:var(${k.accent});--accent-tint:var(${k.tint})">
+      <div class="kpi-top"><span class="kpi-label">${k.label}</span><span class="kpi-badge">${k.icon}</span></div>
+      <div class="kpi-value ${k.neg?'neg':''}">${k.value}</div>
+      ${k.note?`<div class="kpi-note">${k.note}</div>`:''}
+    </div>`).join('');
+}
+
 function renderDashboard(){
+  renderRealite();
   const t = computeTotals();
   const c = document.getElementById('dashKpis');
   const admin = isAdmin();
@@ -3257,12 +3319,13 @@ function renderEmployes(){
       ${admin ? `<td class="num">${fmt(e.salaire)}</td>` : ''}
       ${admin ? `<td>${paymentStatusBadge(e)}</td>` : ''}
       ${admin ? `<td class="num"><b>${fmt(ac.total)}</b> F<br><span style="font-size:10.5px;color:var(--ink-soft);">${ac.jours} j × ${fmt(ac.parJour)} F/j</span></td>` : ''}
-      <td>${e.statut==='Actif'?'<span class="pill pill-ok">Actif</span>':'<span class="pill pill-neutral">Inactif</span>'}</td>
+      <td>${employeeStatutBadge(e)}</td>
       <td class="actions"><div class="row-actions">
         <button class="icon-btn" title="Détails" onclick="viewEmployee('${e.id}')">👁️</button>
         <button class="icon-btn" title="Évaluer" onclick="openEvaluationForm('${e.id}')">📝</button>
         <button class="icon-btn" title="Carte membre" onclick="printEmployeeCard('${e.id}')">🪪</button>
         ${admin ? `<button class="icon-btn" title="Payer le salaire" onclick="openPaymentForm('${e.id}')">💵</button>
+        ${e.statut!=='Fin de contrat' ? `<button class="icon-btn danger" title="Fin de contrat" onclick="openEndContractForm('${e.id}')">🏁</button>` : ''}
         <button class="icon-btn" title="Modifier" onclick="openEmployeeForm('${e.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteEmployee('${e.id}')">🗑️</button>` : ''}
       </div></td>
@@ -3374,10 +3437,10 @@ function viewEmployee(id){
       <div>Date d'embauche : <b>${fmtDate(e.dateEmbauche)}</b></div>
       <div>Ancienneté : <b>${anciennete(e.dateEmbauche)}</b> <span style="color:var(--ink-soft);font-size:11.5px;">(${ancienneteJours(e.dateEmbauche)} jours)</span></div>
       <div>Repos : ${restBadgeHtml(e.reposSlot)}</div>
-      <div>Statut : ${e.statut==='Actif'?'<span class="pill pill-ok">Actif</span>':'<span class="pill pill-neutral">Inactif</span>'}</div>
+      <div>Statut : ${employeeStatutBadge(e)}</div>
       <div>Performance moyenne : <b class="mono">${perf}/100</b> <span style="color:var(--ink-soft);font-size:11.5px;">(${evals.length} évaluation${evals.length>1?'s':''})</span></div>
       ${admin?`<div style="border-top:1px solid var(--line-soft);padding-top:10px;">Salaire de base mensuel : <b class="mono" style="font-size:16px;">${fcfa(e.salaire)}</b></div>
-      <div>Prime d'ancienneté : <b class="mono">${Math.round(primeAncienneteRate(e)*10)/10}%</b> <span style="color:var(--ink-soft);font-size:11px;">(${ancienneteJours(e.dateEmbauche)} jours d'ancienneté)</span></div>
+      <div>Prime d'ancienneté : <b class="mono">${fmt(primeAncienneteMontant())} F</b> <span style="color:var(--ink-soft);font-size:11px;">(montant fixe, identique pour tous)</span></div>
       <div>Cycle de paie : ${paymentStatusBadge(e)} <span style="color:var(--ink-soft);font-size:11px;">depuis le ${fmtDate(cycleStartDate(e))}</span></div>
       ${(()=>{ const ac = employeeAccrual(e); return `<div style="background:var(--leaf-tint);border-radius:10px;padding:10px 12px;">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--leaf-dark);font-weight:700;">Gagné depuis le dernier paiement</div>
@@ -3430,13 +3493,9 @@ function anciennete(dateStr){
 }
 function ancienneteJours(dateStr){ return daysAgo(dateStr); }
 
-/* Prime d'ancienneté : % du salaire de base, proportionnel aux années d'ancienneté (plafonné), réglable dans Paramètres.
-   Garantit que deux employés au même poste mais entrés à des dates différentes ne touchent pas le même montant. */
-function primeAncienneteRate(employee){
-  const parAn = Number(state.settings.primeAncienneteParAn)||0;
-  const max = Number(state.settings.primeAncienneteMax)||0;
-  const anneesAnciennete = ancienneteJours(employee.dateEmbauche) / 365;
-  return Math.min(anneesAnciennete * parAn, max);
+/* Prime d'ancienneté : montant fixe en FCFA, identique pour tous les employés, réglable dans Paramètres. */
+function primeAncienneteMontant(){
+  return Number(state.settings.primeAncienneteMontant) || 0;
 }
 
 /* Jours de référence pour le calcul du salaire au prorata (réglable dans Paramètres, 30 jours par défaut).
@@ -3471,7 +3530,7 @@ function employeeAccrual(e, ctx){
   const setting = ['fixe','ca','mixte'].includes(state.settings.salaireBaseMode) ? state.settings.salaireBaseMode : 'mixte';
   const mode = refs[setting]!==null ? setting : 'fixe';
   const base = Math.round(refs[mode] / jRef * jours);
-  const prime = Math.round(base * primeAncienneteRate(e) / 100);
+  const prime = Math.round(primeAncienneteMontant() / jRef * jours); // proratisée comme le salaire de base
   return { jours, jRef, mode, base, prime, total: base + prime, parJour: Math.round(refs[mode] / jRef) };
 }
 function totalDejaPaye(employeeId){
@@ -3643,24 +3702,34 @@ function computeSuggestedSalaries(){
   const totalCoef = coeffs.reduce((s,c)=>s+c.coef,0) || 1;
   return { budget, caRef, rows: coeffs.map(c=>({ employee:c.e, coef:c.coef, part: c.coef/totalCoef, suggere: Math.round(budget * (c.coef/totalCoef) / 500)*500 })) };
 }
-/* Salaire mixte : fixe garanti (x% du salaire fixe, jamais sous le minimum) + prime variable liée au CA.
-   La prime variable = part de l'employé dans la masse variable, c.-à-d. la masse salariale cible (x% du CA de
-   référence) moins les fixes garantis de toute l'équipe. Si le CA est faible, la masse variable est nulle :
-   chacun touche son fixe garanti, jamais moins. */
-function salaireFixeGaranti(e){
-  const garanti = Math.round((Number(e.salaire)||0) * partFixeGarantiePct() / 100);
-  return Math.max(garanti, Number(state.settings.salaireMinimum)||0);
+/* Salaire mixte : Coefficient de paie unique appliqué au salaire de référence de chaque employé.
+     Coefficient de paie = Part fixe garantie + (1 − Part fixe garantie) × Coefficient CA
+     Coefficient CA      = min(1, CA réel ÷ CA cible)
+     CA cible            = somme des salaires de référence des employés actifs ÷ Masse salariale cible (%)
+   Le même coefficient s'applique à tous : si le CA couvre entièrement la masse salariale cible, chacun touche
+   100% de son salaire de référence ; si le CA est très faible, chacun touche au moins sa part fixe garantie
+   (ex : 75%), jamais moins. Le salaire minimum légal reste un plancher absolu, au-dessus de ce coefficient. */
+function coefficientCA(){
+  const caRef = caReferenceSalaires();
+  const refTotal = activeEmployees().reduce((a,e)=>a+(Number(e.salaire)||0), 0);
+  const caCible = refTotal / (tauxMasseSalarialePct()/100);
+  const coef = caCible > 0 ? Math.min(1, caRef.ca / caCible) : 1;
+  return { caRef, refTotal, caCible, coef };
+}
+function coefficientDePaie(){
+  const partFixe = partFixeGarantiePct()/100;
+  return partFixe + (1-partFixe) * coefficientCA().coef;
 }
 function computeMixedSalaries(){
-  const sug = computeSuggestedSalaries();
-  const garanties = sug.rows.map(r=>salaireFixeGaranti(r.employee));
-  const totalGaranti = garanties.reduce((a,b)=>a+b,0);
-  const pool = Math.max(0, sug.budget - totalGaranti);
-  const rows = sug.rows.map((r,i)=>{
-    const variable = Math.round(pool * r.part / 500) * 500;
-    return { employee:r.employee, part:r.part, garanti:garanties[i], variable, total:garanties[i]+variable };
+  const cca = coefficientCA();
+  const coefPaie = partFixeGarantiePct()/100 + (1-partFixeGarantiePct()/100) * cca.coef;
+  const rows = activeEmployees().map(e=>{
+    const ref = Number(e.salaire)||0;
+    const ajuste = Math.max(Math.round(ref * coefPaie), Number(state.settings.salaireMinimum)||0);
+    return { employee:e, salaireReference:ref, total:ajuste };
   });
-  return { budget:sug.budget, caRef:sug.caRef, totalGaranti, pool, rows };
+  const totalMasse = rows.reduce((a,r)=>a+r.total, 0);
+  return { caRef:cca.caRef, refTotal:cca.refTotal, caCible:cca.caCible, coefficientCA:cca.coef, coefficientPaie:coefPaie, totalMasse, rows };
 }
 function openSalaryCalcModal(){
   const { budget, rows, caRef } = computeSuggestedSalaries();
@@ -3674,7 +3743,9 @@ function openSalaryCalcModal(){
         Masse salariale cible : <b>${tauxMasseSalarialePct()}% du CA de ${escapeHtml(caRef.label)}</b> (${fcfa(caRef.ca)}) = <b>${fcfa(budget)}</b>, répartie entre les employés actifs
         selon le poste/niveau de responsabilité (35%), l'expérience (25%), les compétences (25%) et la performance (15%).
         L'ancienneté n'entre pas dans cette répartition : elle est récompensée à part par la prime d'ancienneté.<br>
-        <b>Formule mixte</b> : fixe garanti (${partFixeGarantiePct()}% du salaire fixe) + prime variable liée au CA (masse variable de ${fcfa(mix.pool)} après ${fcfa(mix.totalGaranti)} de fixes garantis).
+        <b>Formule mixte</b> : Salaire à payer = Salaire de référence × (jours travaillés ÷ 30) × Coefficient de paie, où Coefficient de paie = ${partFixeGarantiePct()}% + ${100-partFixeGarantiePct()}% × Coefficient CA,
+        Coefficient CA = min(100%, CA réel ÷ CA cible) = ${Math.round(mix.coefficientCA*1000)/10}%, et CA cible = somme des salaires de référence (${fcfa(mix.refTotal)}) ÷ ${tauxMasseSalarialePct()}% = ${fcfa(mix.caCible)}.
+        Coefficient de paie actuel : <b>${Math.round(mix.coefficientPaie*1000)/10}%</b>.
       </p>
       <div class="table-wrap" style="margin-top:12px;">
         <table class="data-table">
@@ -3687,7 +3758,7 @@ function openSalaryCalcModal(){
               <td>${paymentStatusBadge(r.employee)}</td>
               <td class="num">${Math.round(r.part*1000)/10}%</td>
               <td class="num"><b>${fcfa(r.suggere)}</b></td>
-              <td class="num"><b>${fcfa(mixOf(r.employee.id).total)}</b><br><span style="font-size:10.5px;color:var(--ink-soft);">${fcfa(mixOf(r.employee.id).garanti)} + ${fcfa(mixOf(r.employee.id).variable)}</span></td>
+              <td class="num"><b>${fcfa(mixOf(r.employee.id).total)}</b><br><span style="font-size:10.5px;color:var(--ink-soft);">${Math.round(mix.coefficientPaie*1000)/10}% de ${fmt(r.employee.salaire)}</span></td>
               <td class="num">${fcfa(r.employee.salaire)}</td>
               <td class="actions"><button class="btn btn-soft btn-sm" onclick="applySuggestedSalary('${r.employee.id}', ${r.suggere})">Appliquer</button></td>
             </tr>`).join('')}
@@ -3734,7 +3805,7 @@ function openGestionRemunModal(){
                 <td>${escapeHtml(e.poste)}</td>
                 <td class="num">${e.pourcentageGestion||0}%</td>
                 <td class="num"><b>${fcfa(montant)}</b></td>
-                <td>${e.statut==='Actif'?'<span class="pill pill-ok">Actif</span>':'<span class="pill pill-neutral">Inactif</span>'}</td>
+                <td>${employeeStatutBadge(e)}</td>
                 <td class="actions"><button class="btn btn-soft btn-sm" ${montant<=0?'disabled':''} onclick="openGestionPaymentForm('${e.id}', ${montant})">💼 Verser</button></td>
               </tr>`;
             }).join('') : `<tr class="empty-row"><td colspan="6">Aucun employé désigné comme gestionnaire pour le moment. Cochez « Est gestionnaire » sur sa fiche pour l'ajouter ici.</td></tr>`}
@@ -4796,7 +4867,7 @@ function printEmployeeCard(id){
     </div>
     <div style="padding:12px 18px 18px;background:#fff;border-top:1px dashed #E2E8E3;font-size:11.5px;color:#5C6E67;display:flex;justify-content:space-between;">
       <span>Embauché le ${fmtDate(e.dateEmbauche)}</span>
-      <span style="font-weight:700;color:${e.statut==='Actif'?'#206B48':'#8E1C2B'};">${escapeHtml(e.statut)}</span>
+      <span style="font-weight:700;color:${e.statut==='Actif'?'#206B48':e.statut==='Fin de contrat'?'#8E1C2B':'#5C6E67'};">${escapeHtml(e.statut)}</span>
     </div>
     ${printBrandFooter()}
   </div>`;
@@ -4887,14 +4958,14 @@ function openPaymentForm(employeeId){
   const joursCycle = joursDepuisCycle(e);
   let jours = joursCycle; // modifiable dans le formulaire (absences, départ…) : le montant suit
   const ancJours = ancienneteJours(e.dateEmbauche);
-  const primeRate = primeAncienneteRate(e);
+  const primeAncFixe = primeAncienneteMontant();
   // Deux bases possibles pour le salaire mensuel : salaire fixe, ou part de la masse salariale liée au CA
   const sug = computeSuggestedSalaries();
   const sugRow = sug.rows.find(r=>r.employee.id===e.id);
   const mix = computeMixedSalaries();
   const mixRow = mix.rows.find(r=>r.employee.id===e.id);
   const refs = { fixe: Number(e.salaire)||0, ca: sugRow ? sugRow.suggere : null, mixte: mixRow ? mixRow.total : null };
-  const calc = (ref) => { const base = Math.round(ref / jRef * jours); const prime = Math.round(base * primeRate / 100); return { base, prime, total: base + prime }; };
+  const calc = (ref) => { const base = Math.round(ref / jRef * jours); const prime = Math.round(primeAncFixe / jRef * jours); return { base, prime, total: base + prime }; };
   const computeCalcs = () => ({ fixe: calc(refs.fixe), ca: refs.ca!==null ? calc(refs.ca) : null, mixte: refs.mixte!==null ? calc(refs.mixte) : null });
   let calcs = computeCalcs();
   const modeSetting = ['fixe','ca','mixte'].includes(state.settings.salaireBaseMode) ? state.settings.salaireBaseMode : 'mixte';
@@ -4913,12 +4984,12 @@ function openPaymentForm(employeeId){
       <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:.04em;">Détail transparent du calcul</div>
       <div style="font-size:11px;color:var(--ink-soft);font-style:italic;">Salaire à payer = Salaire mensuel × (jours travaillés / jours de référence) + Prime d'ancienneté</div>
       ${mode==='ca' ? `<div style="font-size:11.5px;color:var(--ink-soft);">CA de ${escapeHtml(sug.caRef.label)} : ${fcfa(sug.caRef.ca)} × ${tauxMasseSalarialePct()}% = masse salariale ${fcfa(sug.budget)} · part de ${escapeHtml(e.nom)} : ${Math.round(sugRow.part*1000)/10}%</div>` : ''}
-      ${mode==='mixte' ? `<div style="font-size:11.5px;color:var(--ink-soft);">CA de ${escapeHtml(sug.caRef.label)} : ${fcfa(sug.caRef.ca)} × ${tauxMasseSalarialePct()}% = ${fcfa(mix.budget)} · fixes garantis de l'équipe ${fcfa(mix.totalGaranti)} · masse variable ${fcfa(mix.pool)} · part de ${escapeHtml(e.nom)} : ${Math.round(mixRow.part*1000)/10}%</div>
-        <div style="display:flex;justify-content:space-between;"><span>Fixe garanti (${partFixeGarantiePct()}% de ${fmt(refs.fixe)}${mixRow.garanti>Math.round(refs.fixe*partFixeGarantiePct()/100)?', relevé au minimum garanti':''})</span><b>${fmt(mixRow.garanti)}</b></div>
-        <div style="display:flex;justify-content:space-between;"><span>Prime variable liée au CA</span><b>${fmt(mixRow.variable)}</b></div>` : ''}
+      ${mode==='mixte' ? `<div style="font-size:11.5px;color:var(--ink-soft);">CA cible (pour payer tous les salaires de référence à ${tauxMasseSalarialePct()}%) : ${fcfa(mix.caCible)} · CA réel de ${escapeHtml(sug.caRef.label)} : ${fcfa(mix.caRef.ca)} → Coefficient CA = ${Math.round(mix.coefficientCA*1000)/10}%</div>
+        <div style="display:flex;justify-content:space-between;"><span>Coefficient de paie (${partFixeGarantiePct()}% + ${100-partFixeGarantiePct()}% × Coefficient CA)</span><b>${Math.round(mix.coefficientPaie*1000)/10}%</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>Salaire de référence × Coefficient de paie</span><b>${fmt(mixRow.total)}</b></div>` : ''}
       <div style="display:flex;justify-content:space-between;"><span>Salaire mensuel (${modeLabel[mode]})</span><b>${fmt(ref)}</b></div>
       <div style="display:flex;justify-content:space-between;"><span>Salaire de base (${jours}j / ${jRef}j)</span><b>${fmt(c.base)}</b></div>
-      <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté (${ancJours} j, soit ${Math.round(primeRate*10)/10}%)</span><b>${fmt(c.prime)}</b></div>
+      <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté suggérée (${fmt(primeAncFixe)} F proratisée sur ${jours}j/${jRef}j)</span><b>${fmt(c.prime)}</b></div>
       <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:4px;margin-top:2px;"><span style="font-weight:700;">Total suggéré</span><b>${fmt(c.total)}</b></div>`;
   };
   openModal({
@@ -4938,12 +5009,17 @@ function openPaymentForm(employeeId){
           <div class="field"><label>Jours travaillés</label><input required type="number" min="0" step="0.5" name="jours" id="payJours" value="${joursCycle}"></div>
           <div class="field" style="justify-content:flex-end;"><span id="payDaysNote" style="font-size:11px;color:var(--ink-soft);line-height:1.4;">Jours écoulés depuis le ${fmtDate(cycleStartDate(e))} : ${joursCycle}. Modifiez si l'employé a été absent.</span></div>
           <div class="field full"><label>Période</label><input required name="periode" value="${moisActuel.charAt(0).toUpperCase()+moisActuel.slice(1)}" placeholder="Ex : Septembre 2026"></div>
+          <div class="field"><label>Prime d'ancienneté (FCFA)</label><input required type="number" min="0" name="prime" id="payPrime" value="${calcs[modeDefaut].prime}"></div>
           <div class="field"><label>Montant payé (FCFA)</label><input required type="number" min="0" name="montant" id="payMontant" value="${calcs[modeDefaut].total}"></div>
           <div class="field"><label>Date de paiement</label><input required type="date" name="date" value="${todayISO()}"></div>
           <div class="field full"><label>Mode de paiement</label>
             <select name="mode"><option>Espèces</option><option>Mobile Money</option><option>Virement bancaire</option><option>Chèque</option></select>
           </div>
         </div>
+        <label style="display:flex;align-items:flex-start;gap:10px;margin-top:14px;padding:10px 12px;background:var(--bissap-tint);border-radius:8px;font-size:12.5px;line-height:1.5;cursor:pointer;">
+          <input type="checkbox" required id="payConfirmCheckbox" style="margin-top:2px;">
+          <span>Je confirme avoir <b>réellement remis cet argent</b> à ${escapeHtml(e.nom)}. Le compteur de jours travaillés repartira de zéro à partir de cette date.</span>
+        </label>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
           <button type="submit" class="btn btn-primary">💵 Enregistrer &amp; imprimer la fiche de paie</button>
@@ -4951,18 +5027,27 @@ function openPaymentForm(employeeId){
       </form>`,
     onMount(overlay){
       const modeSel = overlay.querySelector('#payBaseMode');
+      const primeInput = overlay.querySelector('#payPrime');
+      const montantInput = overlay.querySelector('#payMontant');
+      const recalcMontant = () => {
+        const baseNow = calcs[modeSel.value].base;
+        const primeNow = Number(primeInput.value) || 0;
+        montantInput.value = baseNow + primeNow; // le total suit le salaire de base + la prime (modifiable séparément)
+      };
       modeSel.addEventListener('change', ()=>{
         const m = modeSel.value;
         overlay.querySelector('#salaryCalcBox').innerHTML = calcBoxHtml(m);
-        overlay.querySelector('#payMontant').value = calcs[m].total; // le montant suit la base choisie (modifiable ensuite)
+        recalcMontant(); // la prime ne change pas selon le mode, seule la base change
       });
+      primeInput.addEventListener('input', recalcMontant);
       const joursInput = overlay.querySelector('#payJours');
       joursInput.addEventListener('input', ()=>{
         jours = Math.max(0, Number(joursInput.value)||0);
         calcs = computeCalcs();
         const m = modeSel.value;
         overlay.querySelector('#salaryCalcBox').innerHTML = calcBoxHtml(m);
-        overlay.querySelector('#payMontant').value = calcs[m].total; // le montant évolue avec les jours travaillés
+        primeInput.value = calcs[m].prime; // la prime suggérée se réajuste aux nouveaux jours (modifiable ensuite)
+        recalcMontant();
         overlay.querySelector('#payDaysNote').innerHTML = jours < joursCycle
           ? `⚠️ ${Math.round((joursCycle-jours)*10)/10} jour(s) écoulé(s) ne seront pas payés : le prochain cycle repartira après la date de ce paiement.`
           : `Jours écoulés depuis le ${fmtDate(cycleStartDate(e))} : ${joursCycle}.`;
@@ -4970,18 +5055,92 @@ function openPaymentForm(employeeId){
       overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
       overlay.querySelector('#paymentForm').addEventListener('submit',(ev)=>{
         ev.preventDefault();
+        if(!overlay.querySelector('#payConfirmCheckbox').checked){
+          toast("Confirmez avoir réellement remis l'argent avant d'enregistrer", 'error');
+          return;
+        }
         const f = new FormData(ev.target);
         const m = modeSel.value, c = calcs[m];
+        const primeFinale = Math.max(0, Number(f.get('prime')) || 0);
         const payment = {
           id: uid('PAY'), employeeId, periode: f.get('periode').trim(), montant: Number(f.get('montant')),
           date: f.get('date'), mode: f.get('mode'), payePar: currentUser.nom, categorie: 'Salaire',
           baseMode: m, salaireReference: refs[m],
           ...(m==='mixte' ? { fixeGaranti: mixRow.garanti, primeVariable: mixRow.variable } : {}),
-          salaireBase: c.base, primeAncienneteTaux: Math.round(primeRate*10)/10, primeAncienneteMontant: c.prime, joursTravailles: jours,
+          salaireBase: c.base, primeAncienneteMontant: primeFinale, joursTravailles: jours,
         };
         state.salaryPayments.push(payment);
         persist(); closeModal();
         toast('Paiement enregistré pour ' + e.nom);
+        printPayslip(payment.id);
+        if(document.getElementById('page-employes').classList.contains('active')) renderEmployes();
+      });
+    }
+  });
+}
+/* ---- Fin de contrat : solde de tout compte (ce qui est dû depuis le dernier paiement) puis passage au statut "Fin de contrat" ---- */
+function openEndContractForm(employeeId){
+  const e = state.employees.find(e=>e.id===employeeId);
+  if(!e) return;
+  const ac = employeeAccrual(e);
+  openModal({
+    title: '🏁 Fin de contrat — ' + e.nom,
+    bodyHtml:`
+      <p style="font-size:12px;color:var(--bissap-dark);background:var(--bissap-tint);padding:8px 10px;border-radius:8px;line-height:1.5;">Cette action règle le solde dû à ${escapeHtml(e.nom)} puis le passe au statut « Fin de contrat » : il ne comptera plus parmi les employés actifs (masse salariale, coefficient CA, etc.) et son compteur de jours travaillés sera arrêté.</p>
+      <div style="font-size:12px;background:var(--line-soft);border-radius:8px;padding:10px 12px;margin-top:10px;display:flex;flex-direction:column;gap:4px;">
+        <div style="font-weight:700;font-size:11px;text-transform:uppercase;color:var(--ink-soft);letter-spacing:.04em;">Solde de tout compte</div>
+        <div style="display:flex;justify-content:space-between;"><span>Jours travaillés depuis le dernier paiement</span><b>${ac.jours} j</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>Salaire de base</span><b>${fmt(ac.base)}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté</span><b>${fmt(ac.prime)}</b></div>
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:4px;margin-top:2px;"><span style="font-weight:700;">Total dû</span><b>${fmt(ac.total)}</b></div>
+      </div>
+      <form id="endContractForm">
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="field"><label>Date de fin de contrat</label><input required type="date" name="dateFin" value="${todayISO()}"></div>
+          <div class="field"><label>Prime d'ancienneté (FCFA)</label><input required type="number" min="0" name="prime" id="endPrime" value="${ac.prime}"></div>
+          <div class="field"><label>Montant du solde payé (FCFA)</label><input required type="number" min="0" name="montant" id="endMontant" value="${ac.total}"></div>
+          <div class="field full"><label>Mode de paiement</label>
+            <select name="mode"><option>Espèces</option><option>Mobile Money</option><option>Virement bancaire</option><option>Chèque</option></select>
+          </div>
+          <div class="field full"><label>Motif (optionnel)</label><input name="motif" placeholder="Ex : fin de période d'essai, démission, licenciement…"></div>
+        </div>
+        <label style="display:flex;align-items:flex-start;gap:10px;margin-top:10px;padding:10px 12px;background:var(--bissap-tint);border-radius:8px;font-size:12.5px;line-height:1.5;cursor:pointer;">
+          <input type="checkbox" required id="endContractConfirm" style="margin-top:2px;">
+          <span>Je confirme avoir <b>réellement remis ce solde de tout compte</b> à ${escapeHtml(e.nom)}, et je valide la fin de son contrat.</span>
+        </label>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-danger">🏁 Solder &amp; clore le contrat</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      const primeInput = overlay.querySelector('#endPrime');
+      const montantInput = overlay.querySelector('#endMontant');
+      primeInput.addEventListener('input', ()=>{
+        montantInput.value = ac.base + (Number(primeInput.value)||0); // le total suit la prime ajustée
+      });
+      overlay.querySelector('#endContractForm').addEventListener('submit',(ev)=>{
+        ev.preventDefault();
+        if(!overlay.querySelector('#endContractConfirm').checked){
+          toast('Confirmez avoir réellement remis le solde avant de clore le contrat', 'error');
+          return;
+        }
+        const f = new FormData(ev.target);
+        const dateFin = f.get('dateFin');
+        const primeFinale = Math.max(0, Number(f.get('prime')) || 0);
+        const payment = {
+          id: uid('PAY'), employeeId, periode: 'Solde de tout compte', montant: Number(f.get('montant')),
+          date: dateFin, mode: f.get('mode'), payePar: currentUser.nom, categorie: 'Salaire',
+          baseMode: 'fixe', salaireReference: Number(e.salaire)||0,
+          salaireBase: ac.base, primeAncienneteMontant: primeFinale, joursTravailles: ac.jours,
+          note: 'Fin de contrat' + (f.get('motif') ? ' — ' + f.get('motif').trim() : ''),
+        };
+        state.salaryPayments.push(payment);
+        e.statut = 'Fin de contrat';
+        e.dateFinContrat = dateFin;
+        persist(); closeModal();
+        toast('Contrat de ' + e.nom + ' clos, solde réglé');
         printPayslip(payment.id);
         if(document.getElementById('page-employes').classList.contains('active')) renderEmployes();
       });
@@ -5025,7 +5184,7 @@ function printPayslip(paymentId){
         ${p.salaireReference!==undefined ? `<div style="display:flex;justify-content:space-between;"><span>Salaire mensuel (${p.baseMode==='ca'?'lié au CA':(p.baseMode==='mixte'?'mixte':'fixe')})</span><b>${fmt(p.salaireReference)}</b></div>` : ''}
         ${p.baseMode==='mixte' && p.fixeGaranti!==undefined ? `<div style="display:flex;justify-content:space-between;color:#5C6E67;"><span>&nbsp;&nbsp;↳ dont fixe garanti</span><span>${fmt(p.fixeGaranti)}</span></div><div style="display:flex;justify-content:space-between;color:#5C6E67;"><span>&nbsp;&nbsp;↳ dont prime variable CA</span><span>${fmt(p.primeVariable||0)}</span></div>` : ''}
         <div style="display:flex;justify-content:space-between;"><span>Salaire de base (${p.joursTravailles||0}j travaillés)</span><b>${fmt(p.salaireBase)}</b></div>
-        <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté (${p.primeAncienneteTaux||0}%)</span><b>${fmt(p.primeAncienneteMontant||0)}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>Prime d'ancienneté (montant fixe)</span><b>${fmt(p.primeAncienneteMontant||0)}</b></div>
       </div>` : ''}
       <div style="margin-top:16px;padding:14px 16px;background:#E1F3EA;border-radius:12px;display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:12.5px;color:#206B48;font-weight:700;">Montant net payé</span>
@@ -5311,8 +5470,7 @@ function renderParametres(){
   $('#settingsVille').value = state.settings.ville;
   $('#settingsDevise').value = state.settings.devise;
   $('#settingsCongeCycle').value = state.settings.congeCycleStart || '2026-08-01';
-  $('#settingsPrimeParAn').value = state.settings.primeAncienneteParAn;
-  $('#settingsPrimeMax').value = state.settings.primeAncienneteMax;
+  $('#settingsPrimeFixe').value = state.settings.primeAncienneteMontant;
   $('#settingsJoursReference').value = state.settings.joursReferenceSalaire || 30;
   $('#settingsTauxMasse').value = tauxMasseSalarialePct();
   $('#settingsSalaireMode').value = state.settings.salaireBaseMode || 'mixte';
@@ -5342,8 +5500,7 @@ function saveSettings(e){
   state.settings.ville = $('#settingsVille').value.trim();
   state.settings.devise = $('#settingsDevise').value.trim() || 'FCFA';
   state.settings.congeCycleStart = $('#settingsCongeCycle').value || state.settings.congeCycleStart;
-  state.settings.primeAncienneteParAn = Number($('#settingsPrimeParAn').value) || 0;
-  state.settings.primeAncienneteMax = Number($('#settingsPrimeMax').value) || 0;
+  state.settings.primeAncienneteMontant = Math.max(0, Number($('#settingsPrimeFixe').value) || 0);
   state.settings.joursReferenceSalaire = Math.max(Number($('#settingsJoursReference').value) || 30, 1);
   state.settings.tauxMasseSalariale = Math.min(100, Math.max(Number($('#settingsTauxMasse').value) || 21, 1));
   state.settings.salaireBaseMode = ['fixe','ca','mixte'].includes($('#settingsSalaireMode').value) ? $('#settingsSalaireMode').value : 'mixte';
