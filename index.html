@@ -1470,7 +1470,7 @@ function catColor(nom){
 function activeEmployees(){ return state.employees.filter(e => e.statut === 'Actif'); }
 function employeeStatutBadge(e){
   if(e.statut==='Fin de contrat') return '<span class="pill pill-danger">🏁 Fin de contrat</span>';
-  if(e.statut==='Actif') return '<span class="pill pill-ok">Actif</span>';
+  if(e.statut==='Actif') return enPause(e) ? '<span class="pill pill-gold">⏸️ En pause</span>' : '<span class="pill pill-ok">Actif</span>';
   return '<span class="pill pill-neutral">Inactif</span>';
 }
 function distinctOrders(){ return new Set(state.sales.map(s => s.commande || s.id)).size; }
@@ -3318,13 +3318,16 @@ function renderEmployes(){
       <td>${fmtDate(e.dateEmbauche)}</td>
       ${admin ? `<td class="num">${fmt(e.salaire)}</td>` : ''}
       ${admin ? `<td>${paymentStatusBadge(e)}</td>` : ''}
-      ${admin ? `<td class="num"><b>${fmt(ac.total)}</b> F<br><span style="font-size:10.5px;color:var(--ink-soft);">${ac.jours} j × ${fmt(ac.parJour)} F/j</span></td>` : ''}
+      ${admin ? `<td class="num"><b>${fmt(ac.total)}</b> F<br><span style="font-size:10.5px;color:var(--ink-soft);">${ac.jours} j × ${fmt(ac.parJour)} F/j${ac.enPause?' — ⏸️ figé':''}</span></td>` : ''}
       <td>${employeeStatutBadge(e)}</td>
       <td class="actions"><div class="row-actions">
         <button class="icon-btn" title="Détails" onclick="viewEmployee('${e.id}')">👁️</button>
         <button class="icon-btn" title="Évaluer" onclick="openEvaluationForm('${e.id}')">📝</button>
         <button class="icon-btn" title="Carte membre" onclick="printEmployeeCard('${e.id}')">🪪</button>
         ${admin ? `<button class="icon-btn" title="Payer le salaire" onclick="openPaymentForm('${e.id}')">💵</button>
+        ${e.statut==='Actif' ? (enPause(e)
+          ? `<button class="icon-btn" title="Reprendre le service" onclick="openResumeForm('${e.id}')">▶️</button>`
+          : `<button class="icon-btn" title="Mettre en pause" onclick="openPauseForm('${e.id}')">⏸️</button>`) : ''}
         ${e.statut!=='Fin de contrat' ? `<button class="icon-btn danger" title="Fin de contrat" onclick="openEndContractForm('${e.id}')">🏁</button>` : ''}
         <button class="icon-btn" title="Modifier" onclick="openEmployeeForm('${e.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteEmployee('${e.id}')">🗑️</button>` : ''}
@@ -3445,7 +3448,8 @@ function viewEmployee(id){
       ${(()=>{ const ac = employeeAccrual(e); return `<div style="background:var(--leaf-tint);border-radius:10px;padding:10px 12px;">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--leaf-dark);font-weight:700;">Gagné depuis le dernier paiement</div>
         <div class="mono" style="font-size:20px;font-weight:700;color:var(--leaf-dark);">${fcfa(ac.total)}</div>
-        <div style="font-size:11.5px;color:var(--ink-soft);">${ac.jours} jour(s) travaillé(s) × ${fmt(ac.parJour)} F/jour${ac.prime?` + prime d'ancienneté ${fmt(ac.prime)} F`:''} — le montant augmente chaque jour.</div>
+        ${ac.enPause?`<div style="font-size:11.5px;color:var(--millet-dark);font-weight:600;margin-bottom:2px;">⏸️ En pause depuis le ${fmtDate(pauseEnCours(e).debut)} — le compteur et le salaire sont figés jusqu'à la reprise du service.</div>`:''}
+        <div style="font-size:11.5px;color:var(--ink-soft);">${ac.jours} jour(s) travaillé(s)${ac.joursPause?` (hors ${ac.joursPause} j de pause)`:''} × ${fmt(ac.parJour)} F/jour${ac.prime?` + prime d'ancienneté ${fmt(ac.prime)} F`:''} — le montant augmente chaque jour.</div>
         <div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px;">Déjà payé au total (salaires) : <b>${fcfa(totalDejaPaye(e.id))}</b></div>
       </div>`; })()}`:''}
       <div class="form-actions" style="justify-content:flex-start;">
@@ -3513,9 +3517,26 @@ function cycleStartDate(employee){
   const d = parseDate(last); d.setDate(d.getDate()+1);
   return d.toISOString().slice(0,10);
 }
+/* ---- Pause : tant qu'un employé est en pause, ses jours ne comptent pas comme jours travaillés et son
+   salaire cesse de s'incrémenter. Convention : le jour du début de pause est NON travaillé (inclus), le jour
+   de la reprise est travaillé (la pause se termine la veille). ---- */
+function enPause(e){ return (e.pauses||[]).some(p=>!p.fin); }
+function pauseEnCours(e){ return (e.pauses||[]).find(p=>!p.fin) || null; }
+function joursEnPauseDansCycle(e){
+  const start = cycleStartDate(e);
+  const demain = addDaysISO(todayISO(), 1);
+  let total = 0;
+  (e.pauses||[]).forEach(p=>{
+    const d0 = p.debut > start ? p.debut : start;
+    const finExcl = p.fin ? p.fin : demain;          // pause ouverte : comptée jusqu'à aujourd'hui inclus
+    const d1 = finExcl < demain ? finExcl : demain;
+    if(d1 > d0) total += Math.round((parseDate(d1) - parseDate(d0)) / 86400000);
+  });
+  return total;
+}
 function joursDepuisCycle(employee){
-  // Jours travaillés depuis le dernier paiement, jour en cours inclus (embauché lundi, on est mercredi = 3 jours)
-  return Math.max(0, daysAgo(cycleStartDate(employee)) + 1);
+  // Jours travaillés depuis le dernier paiement, jour en cours inclus, moins les jours de pause
+  return Math.max(0, daysAgo(cycleStartDate(employee)) + 1 - joursEnPauseDansCycle(employee));
 }
 /* Gains accumulés depuis le dernier paiement : le montant grandit chaque jour travaillé.
    Utilise la base de calcul par défaut (Paramètres) : fixe, mixte ou lié au CA. */
@@ -3531,7 +3552,7 @@ function employeeAccrual(e, ctx){
   const mode = refs[setting]!==null ? setting : 'fixe';
   const base = Math.round(refs[mode] / jRef * jours);
   const prime = Math.round(primeAncienneteMontant() / jRef * jours); // proratisée comme le salaire de base
-  return { jours, jRef, mode, base, prime, total: base + prime, parJour: Math.round(refs[mode] / jRef) };
+  return { jours, jRef, mode, base, prime, total: base + prime, parJour: Math.round(refs[mode] / jRef), enPause: enPause(e), joursPause: joursEnPauseDansCycle(e) };
 }
 function totalDejaPaye(employeeId){
   return employeePayments(employeeId).filter(p=>p.categorie!=='Rémunération gestion').reduce((a,p)=>a+(Number(p.montant)||0),0);
@@ -3541,6 +3562,9 @@ function isDueForPayment(employee){
 }
 function paymentStatusBadge(employee){
   const jours = joursDepuisCycle(employee);
+  if(enPause(employee)){
+    return `<span class="pill pill-gold">⏸️ Figé à ${jours}j</span>`;
+  }
   if(employee.statut==='Inactif'){
     return `<span class="pill pill-warn">Départ — ${jours}j dus</span>`;
   }
@@ -4973,7 +4997,9 @@ function openPaymentForm(employeeId){
   const modeLabel = { fixe:'fixe', ca:'lié au CA', mixte:'mixte' };
   const estAbandon = e.statut === 'Inactif';
   const estComplet = joursCycle >= jRef;
-  const noteCycle = estAbandon
+  const noteCycle = enPause(e)
+    ? `⏸️ ${escapeHtml(e.nom)} est actuellement en pause depuis le ${fmtDate(pauseEnCours(e).debut)} : seuls ${joursCycle} jour(s) travaillé(s) avant la pause sont payés (${joursEnPauseDansCycle(e)} j de pause non comptés).`
+    : estAbandon
     ? `⚠️ Employé inactif : ${joursCycle} jour(s) travaillé(s) depuis le ${fmtDate(cycleStartDate(e))} — paiement au prorata des jours travaillés.`
     : estComplet
       ? `✅ ${joursCycle} jour(s) travaillé(s) depuis le dernier paiement — cycle de ${jRef} jours atteint, paiement complet proposé.`
@@ -5078,6 +5104,72 @@ function openPaymentForm(employeeId){
     }
   });
 }
+/* ---- Pause / reprise de service ---- */
+function openPauseForm(employeeId){
+  const e = state.employees.find(e=>e.id===employeeId);
+  if(!e || enPause(e)) return;
+  const derniereFin = (e.pauses||[]).reduce((m,p)=> p.fin && p.fin > m ? p.fin : m, e.dateEmbauche);
+  openModal({
+    title: '⏸️ Mettre en pause — ' + e.nom, narrow:true,
+    bodyHtml:`
+      <p style="font-size:12px;color:var(--millet-dark);background:var(--millet-tint);padding:8px 10px;border-radius:8px;line-height:1.5;">Pendant la pause, les jours <b>ne comptent plus comme jours travaillés</b> et le salaire de ${escapeHtml(e.nom)} <b>cesse de s'incrémenter</b>, jusqu'à la reprise du service.</p>
+      <form id="pauseForm">
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="field full"><label>Début de la pause <span class="hint">(ce jour est le premier jour non travaillé)</span></label><input required type="date" name="debut" min="${derniereFin}" max="${todayISO()}" value="${todayISO()}"></div>
+          <div class="field full"><label>Motif (optionnel)</label><input name="motif" placeholder="Ex : maladie, congé, suspension…"></div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">⏸️ Mettre en pause</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#pauseForm').addEventListener('submit',(ev)=>{
+        ev.preventDefault();
+        const f = new FormData(ev.target);
+        const debut = f.get('debut');
+        if(debut < derniereFin || debut > todayISO()){ toast('Date de début de pause invalide', 'error'); return; }
+        e.pauses = e.pauses || [];
+        e.pauses.push({ id: uid('PZ'), debut, fin: null, motif: (f.get('motif')||'').trim() });
+        persist(); closeModal(); toast(e.nom + ' est en pause — compteur figé');
+        if(document.getElementById('page-employes').classList.contains('active')) renderEmployes();
+      });
+    }
+  });
+}
+function openResumeForm(employeeId){
+  const e = state.employees.find(e=>e.id===employeeId);
+  const pz = e && pauseEnCours(e);
+  if(!pz) return;
+  openModal({
+    title: '▶️ Reprendre le service — ' + e.nom, narrow:true,
+    bodyHtml:`
+      <p style="font-size:12px;color:var(--leaf-dark);background:var(--leaf-tint);padding:8px 10px;border-radius:8px;line-height:1.5;">En pause depuis le <b>${fmtDate(pz.debut)}</b>${pz.motif?' ('+escapeHtml(pz.motif)+')':''}. À la reprise, le compteur de jours travaillés et le salaire repartent de là où ils s'étaient arrêtés.</p>
+      <form id="resumeForm">
+        <div class="form-grid" style="margin-top:12px;">
+          <div class="field full"><label>Date de reprise <span class="hint">(ce jour est travaillé)</span></label><input required type="date" name="fin" min="${pz.debut}" max="${todayISO()}" value="${todayISO()}"></div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">▶️ Reprendre le service</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#resumeForm').addEventListener('submit',(ev)=>{
+        ev.preventDefault();
+        const fin = new FormData(ev.target).get('fin');
+        if(fin < pz.debut || fin > todayISO()){ toast('Date de reprise invalide', 'error'); return; }
+        pz.fin = fin;
+        const jp = Math.round((parseDate(fin) - parseDate(pz.debut)) / 86400000);
+        persist(); closeModal(); toast(e.nom + ' a repris le service (' + jp + ' j de pause non comptés)');
+        if(document.getElementById('page-employes').classList.contains('active')) renderEmployes();
+      });
+    }
+  });
+}
+
 /* ---- Fin de contrat : solde de tout compte (ce qui est dû depuis le dernier paiement) puis passage au statut "Fin de contrat" ---- */
 function openEndContractForm(employeeId){
   const e = state.employees.find(e=>e.id===employeeId);
@@ -5139,6 +5231,8 @@ function openEndContractForm(employeeId){
         state.salaryPayments.push(payment);
         e.statut = 'Fin de contrat';
         e.dateFinContrat = dateFin;
+        const pauseOuverte = pauseEnCours(e);
+        if(pauseOuverte) pauseOuverte.fin = dateFin; // la pause ne reste pas ouverte sur un contrat clos
         persist(); closeModal();
         toast('Contrat de ' + e.nom + ' clos, solde réglé');
         printPayslip(payment.id);
