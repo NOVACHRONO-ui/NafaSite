@@ -1499,10 +1499,14 @@ function computeTotals(){
   const expensesExploitation = state.expenses.filter(e=>e.type!=='Investissement').reduce((a,e)=>a+e.montant,0);
   const expensesInvestissement = state.expenses.filter(e=>e.type==='Investissement').reduce((a,e)=>a+e.montant,0);
   const payroll = activeEmployees().reduce((a,e)=>a+Number(e.salaire||0),0);
-  // Marge d'exploitation : santé du fonctionnement quotidien, hors coûts exceptionnels de démarrage
-  const margeExploitation = salesTotal - purchasesTotal - expensesExploitation - payroll;
-  // Résultat après investissements de lancement : impact réel des dépenses exceptionnelles de démarrage
-  const resultatApresInvestissements = margeExploitation - expensesInvestissement;
+  // Marge d'exploitation = fonctionnement quotidien (hors coûts de démarrage), liée au MOIS EN COURS :
+  // CA du mois − achats du mois − dépenses d'exploitation du mois − salaires versés du mois − paiements fournisseurs du mois.
+  // (Même calcul que la marge utilisée dans le score de Rentabilité, pour que les deux chiffres concordent.)
+  const margeExploitation = monthlyMarge(todayISO().slice(0,7));
+  // Cumul depuis le début (ancienne définition) : sert de base au résultat global après investissements
+  const margeExploitationCumul = salesTotal - purchasesTotal - expensesExploitation - payroll;
+  // Résultat après investissements de lancement : impact réel des dépenses exceptionnelles de démarrage (cumul)
+  const resultatApresInvestissements = margeExploitationCumul - expensesInvestissement;
   const profit = resultatApresInvestissements; // conservé pour compatibilité avec l'existant (résultat global)
   const today = todayISO();
   const caJour = state.sales.filter(s=>s.date===today).reduce((a,s)=>a+s.total,0);
@@ -1517,7 +1521,7 @@ function computeTotals(){
   const clientsMois = state.sales.filter(s=>monthKey(s.date)===curMonth).reduce((a,s)=>a+Number(s.quantite||0),0);
   const clientsTotal = qtyVendue;
   const alerts = state.stock.filter(s=>Number(s.actuel) < Number(s.min)).length;
-  return {salesTotal,purchasesTotal,expensesTotal,expensesExploitation,expensesInvestissement,payroll,profit,margeExploitation,resultatApresInvestissements,caJour,caSemaine,caMois,qtyVendue,orders,panierMoyen,clientsJour,clientsSemaine,clientsMois,clientsTotal,alerts};
+  return {salesTotal,purchasesTotal,expensesTotal,expensesExploitation,expensesInvestissement,payroll,profit,margeExploitation,margeExploitationCumul,resultatApresInvestissements,caJour,caSemaine,caMois,qtyVendue,orders,panierMoyen,clientsJour,clientsSemaine,clientsMois,clientsTotal,alerts};
 }
 
 /* Bénéfice d'un jour donné (même logique que la marge d'exploitation, appliquée à une seule date) */
@@ -1840,13 +1844,14 @@ function vaLabel(key, g){
   if(g==='mois') return new Date(key+'-01T00:00:00').toLocaleDateString('fr-FR',{month:'short',year:'2-digit'});
   const [y,m,d] = key.split('-'); return (g==='semaine' ? 'Sem. ' : '') + d + '/' + m;
 }
-function computeVentesAchatsSeries(g){
+function computeVentesAchatsSeries(g, endDate){
   const ventes = {}, achats = {};
   state.sales.forEach(x=>{ const k=vaBucketKey(x.date,g); ventes[k]=(ventes[k]||0)+x.total; });
   state.purchases.forEach(x=>{ const k=vaBucketKey(x.date,g); achats[k]=(achats[k]||0)+x.total; });
   state.supplierTransactions.forEach(t=>{ if(t.type==='prise'){ const k=vaBucketKey(t.date,g); achats[k]=(achats[k]||0)+t.montant; } });
   const allDates = [...state.sales.map(x=>x.date), ...state.purchases.map(x=>x.date), ...state.supplierTransactions.filter(t=>t.type==='prise').map(t=>t.date)];
-  const lastDate = allDates.length ? allDates.reduce((a,b)=>a>b?a:b) : todayISO();
+  // endDate : fenêtre imposée (rapport imprimé) ; sinon la fenêtre se termine à la dernière date d'activité
+  const lastDate = endDate || (allDates.length ? allDates.reduce((a,b)=>a>b?a:b) : todayISO());
   const nb = g==='jour' ? 30 : 12;
   const endKey = vaBucketKey(lastDate, g);
   const keys = [endKey];
@@ -1854,13 +1859,9 @@ function computeVentesAchatsSeries(g){
   for(let i=1;i<nb;i++) keys.unshift(back(keys[0]));
   return { keys, ventes: keys.map(k=>ventes[k]||0), achats: keys.map(k=>achats[k]||0) };
 }
-function renderVentesAchatsCombine(){
-  if(!document.getElementById('chartVentesAchatsCombine')) return;
-  const g = vaGranularity;
-  document.querySelectorAll('#vaTabs button').forEach(b=>b.classList.toggle('active', b.dataset.g===g));
-  const { keys, ventes, achats } = computeVentesAchatsSeries(g);
+function buildVaConfig(keys, ventes, achats, g){
   const ecart = ventes.map((v,i)=> v - achats[i]);
-  drawChart('chartVentesAchatsCombine', {
+  return {
     type:'line',
     data:{ labels: keys.map(k=>vaLabel(k,g)),
       datasets:[
@@ -1872,7 +1873,28 @@ function renderVentesAchatsCombine(){
       plugins:{ legend:{ position:'top', align:'end' },
         tooltip:{ callbacks:{ label:(c)=> ' ' + c.dataset.label + ' : ' + fcfa(c.parsed.y) } } },
       scales:{ y:{ grid:{color:'#EEF2EE'}, ticks:{ callback:(v)=>fmt(v) } }, x:{ grid:{display:false}, ticks:{ maxRotation:0, autoSkip:true, maxTicksLimit: g==='jour'?10:12 } } } }
-  });
+  };
+}
+/* Dessine un graphique hors écran et le renvoie sous forme d'image (PNG) : sert à l'insérer dans les rapports imprimés */
+function chartToImage(config, width, height){
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  canvas.style.cssText = 'position:fixed;left:-99999px;top:0;';
+  document.body.appendChild(canvas);
+  try{
+    config.options = Object.assign({}, config.options, { responsive:false, animation:false, devicePixelRatio:3 });
+    const ch = new Chart(canvas.getContext('2d'), config);
+    const url = ch.toBase64Image('image/png', 1);
+    ch.destroy();
+    return url;
+  } finally { canvas.remove(); }
+}
+function renderVentesAchatsCombine(){
+  if(!document.getElementById('chartVentesAchatsCombine')) return;
+  const g = vaGranularity;
+  document.querySelectorAll('#vaTabs button').forEach(b=>b.classList.toggle('active', b.dataset.g===g));
+  const { keys, ventes, achats } = computeVentesAchatsSeries(g);
+  drawChart('chartVentesAchatsCombine', buildVaConfig(keys, ventes, achats, g));
   const tv = ventes.reduce((a,b)=>a+b,0), ta = achats.reduce((a,b)=>a+b,0), te = tv - ta;
   const ratio = tv>0 ? Math.round(ta/tv*1000)/10 : null;
   const per = g==='jour' ? 'les 30 derniers jours' : g==='semaine' ? 'les 12 dernières semaines' : 'les 12 derniers mois';
@@ -1894,8 +1916,8 @@ function renderDashboard(){
     {label:"CA du jour", value:fcfa(t.caJour), icon:'☀️', accent:'--millet', tint:'--millet-tint'},
     {label:"CA de la semaine", value:fcfa(t.caSemaine), icon:'📅', accent:'--sky', tint:'--sky-tint'},
     {label:"CA du mois", value:fcfa(t.caMois), icon:'🗓️', accent:'--teal-800', tint:'--line-soft'},
-    admin && {label:"Marge d'exploitation", value:fcfa(t.margeExploitation), neg:t.margeExploitation<0, icon:'📈', accent: t.margeExploitation>=0?'--leaf':'--bissap', tint: t.margeExploitation>=0?'--leaf-tint':'--bissap-tint', note:"Fonctionnement quotidien, hors démarrage"},
-    admin && {label:"Résultat après investissements", value:fcfa(t.resultatApresInvestissements), neg:t.resultatApresInvestissements<0, icon:'🏗️', accent:'--bissap', tint:'--bissap-tint', note:"Inclut les coûts de lancement"},
+    admin && {label:"Marge d'exploitation", value:fcfa(t.margeExploitation), neg:t.margeExploitation<0, icon:'📈', accent: t.margeExploitation>=0?'--leaf':'--bissap', tint: t.margeExploitation>=0?'--leaf-tint':'--bissap-tint', note:"Mois en cours" + (t.caMois ? " — " + (Math.round(t.margeExploitation/t.caMois*1000)/10) + "% du CA du mois" : " — aucun CA ce mois-ci")},
+    admin && {label:"Résultat après investissements", value:fcfa(t.resultatApresInvestissements), neg:t.resultatApresInvestissements<0, icon:'🏗️', accent:'--bissap', tint:'--bissap-tint', note:"Cumul depuis le début, coûts de lancement inclus"},
     admin && {label:"Bénéfice (semaine)", value:fcfa(last7Days().reduce((s,d)=>s+dailyMarge(d),0)), neg:last7Days().reduce((s,d)=>s+dailyMarge(d),0)<0, icon:'📅', accent:'--leaf', tint:'--leaf-tint', note:"7 derniers jours"},
     admin && {label:"Bénéfice (mois)", value:fcfa(monthlyMarge(todayISO().slice(0,7))), neg:monthlyMarge(todayISO().slice(0,7))<0, icon:'🗓️', accent:'--leaf', tint:'--leaf-tint', note:"Mois en cours"},
     {label:"Produits vendus", value:fmt(t.qtyVendue)+" unités", icon:'🍽️', accent:'--leaf', tint:'--leaf-tint'},
@@ -2201,6 +2223,90 @@ function printDailyReport(date){
     ${Object.keys(byPay).map(m=>`<span style="background:#F3F6F3;border-radius:20px;padding:4px 10px;font-size:11px;">${escapeHtml(m)} : <b>${fmt(byPay[m])}</b></span>`).join('')}
   </div>` : '';
 
+  /* ---- Blocs réservés à l'admin : courbe combinée, marges (jour + mois), situation financière ---- */
+  function titreSection(t){ return `<div style="font-size:11.5px;font-weight:700;color:#8E1C2B;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #DD9A2B;padding-bottom:4px;margin-bottom:8px;">${t}</div>`; }
+  function marginBreakdown(from, to){
+    const inR = d => d>=from && d<=to;
+    const ventesR = state.sales.filter(x=>inR(x.date));
+    const ca = ventesR.reduce((a,x)=>a+x.total,0);
+    const clients = ventesR.reduce((a,x)=>a+Number(x.quantite||0),0);
+    const achatsR = state.purchases.filter(x=>inR(x.date)).reduce((a,x)=>a+x.total,0);
+    const depExpl = state.expenses.filter(x=>inR(x.date)&&x.type!=='Investissement').reduce((a,x)=>a+x.montant,0);
+    const depInv = state.expenses.filter(x=>inR(x.date)&&x.type==='Investissement').reduce((a,x)=>a+x.montant,0);
+    const sal = state.salaryPayments.filter(x=>inR(x.date)).reduce((a,x)=>a+x.montant,0);
+    const fp = state.supplierTransactions.filter(x=>inR(x.date)&&x.type==='paiement').reduce((a,x)=>a+x.montant,0);
+    const marge = ca - achatsR - depExpl - sal - fp;
+    return { ca, clients, achats:achatsR, depExpl, depInv, sal, fp, marge, resultat: marge - depInv, pct: ca ? Math.round(marge/ca*1000)/10 : null };
+  }
+  let adminBlocks = '';
+  if(admin){
+    // a) courbe combinée Ventes & Achats sur les 30 jours se terminant à la date du rapport
+    const ser = computeVentesAchatsSeries('jour', date);
+    let imgHtml = '';
+    try{
+      const url = chartToImage(buildVaConfig(ser.keys, ser.ventes, ser.achats, 'jour'), 440, 230);
+      imgHtml = `<img src="${url}" style="width:100%;display:block;border:1px solid #EEF2EE;border-radius:10px;">`;
+    }catch(err){ imgHtml = '<p style="font-size:11px;color:#93A29B;">Graphique indisponible.</p>'; }
+    const tv = ser.ventes.reduce((a,b)=>a+b,0), ta = ser.achats.reduce((a,b)=>a+b,0), te = tv - ta;
+    const mini = (l,v,c)=>`<div style="flex:1;background:#F3F6F3;border-radius:8px;padding:6px 8px;"><div style="font-size:9px;text-transform:uppercase;color:#5C6E67;">${l}</div><div class="mono" style="font-size:12px;font-weight:700;color:${c};">${v}</div></div>`;
+    const courbeHtml = `<div style="margin-bottom:16px;">
+      ${titreSection('📈 Ventes &amp; Achats — 30 derniers jours')}
+      ${imgHtml}
+      <div style="display:flex;gap:6px;margin-top:8px;">${mini('Ventes', fcfa(tv), '#206B48')}${mini('Achats', fcfa(ta), '#B67A1B')}${mini('Écart', fcfa(te), te>=0?'#2C6E9E':'#8E1C2B')}</div>
+    </div>`;
+
+    // b) marges d'exploitation : jour du rapport et mois (du 1er jusqu'à la date du rapport)
+    const mJ = marginBreakdown(date, date);
+    const mM = marginBreakdown(date.slice(0,7)+'-01', date);
+    const ligne = (lab, a, b, opts={})=>`<tr style="border-top:1px solid #EEF2EE;${opts.bold?'background:#F3F6F3;font-weight:700;':''}"><td style="padding:4px 5px;font-size:11.5px;">${lab}</td><td style="padding:4px 5px;font-size:11.5px;text-align:right;color:${opts.colA||'inherit'};">${a}</td><td style="padding:4px 5px;font-size:11.5px;text-align:right;color:${opts.colB||'inherit'};">${b}</td></tr>`;
+    const colM = v => v>=0 ? '#206B48' : '#8E1C2B';
+    const margesHtml = `<div style="margin-bottom:16px;">
+      ${titreSection('💹 Marge d\'exploitation')}
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#F3F6F3;"><th style="text-align:left;padding:4px 5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;"></th><th style="text-align:right;padding:4px 5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Jour</th><th style="text-align:right;padding:4px 5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Mois (1er → ${fmtDate(date)})</th></tr></thead>
+        <tbody>
+          ${ligne("Chiffre d'affaires", fmt(mJ.ca), fmt(mM.ca))}
+          ${ligne('Clients (qté vendue)', fmt(mJ.clients), fmt(mM.clients))}
+          ${ligne('− Achats', fmt(mJ.achats), fmt(mM.achats))}
+          ${ligne("− Dépenses d'exploitation", fmt(mJ.depExpl), fmt(mM.depExpl))}
+          ${ligne('− Salaires versés', fmt(mJ.sal), fmt(mM.sal))}
+          ${ligne('− Paiements fournisseurs', fmt(mJ.fp), fmt(mM.fp))}
+          ${ligne("= Marge d'exploitation", fmt(mJ.marge), fmt(mM.marge), {bold:true, colA:colM(mJ.marge), colB:colM(mM.marge)})}
+          ${ligne('Marge en % du CA', mJ.pct===null?'—':mJ.pct+' %', mM.pct===null?'—':mM.pct+' %')}
+          ${(mJ.depInv||mM.depInv) ? ligne('− Investissements de démarrage', fmt(mJ.depInv), fmt(mM.depInv)) + ligne('= Résultat après investissements', fmt(mJ.resultat), fmt(mM.resultat), {bold:true, colA:colM(mJ.resultat), colB:colM(mM.resultat)}) : ''}
+        </tbody>
+      </table>
+    </div>`;
+
+    // c) situation financière à ce jour + signaux d'alerte
+    const re = computeRealite();
+    const rent = computeRentabilite();
+    const actifs = activeEmployees();
+    const nbPause = actifs.filter(enPause).length;
+    const encours = creditEncoursTotal();
+    const sig = [];
+    if(mM.marge < 0) sig.push("La marge d'exploitation du mois est négative.");
+    if(re.achatsReels + re.depensesReelles > re.caReel) sig.push("Ce mois-ci, achats et dépenses dépassent le CA encaissé.");
+    if(re.dettesCreees > re.argentDisponible) sig.push("Les dettes fournisseurs dépassent l'argent disponible du mois.");
+    if(stockAlerts.length) sig.push(stockAlerts.length + " article(s) de stock sous le seuil d'alerte.");
+    if(creditEnRetardCount()) sig.push(creditEnRetardCount() + " client(s) à crédit en retard ou impayé.");
+    const kv = (l,v,c)=>`<tr style="border-top:1px solid #EEF2EE;"><td style="padding:4px 5px;font-size:11.5px;">${l}</td><td style="padding:4px 5px;font-size:11.5px;text-align:right;font-weight:700;color:${c||'inherit'};">${v}</td></tr>`;
+    const situationHtml = `<div style="margin-bottom:16px;">
+      ${titreSection('🧭 Situation à ce jour')}
+      ${sig.length ? `<div style="background:#FBE6E9;color:#8E1C2B;border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.5;margin-bottom:8px;"><b>⚠️ ${sig.length} signal(aux) d'alerte</b><br>${sig.map(x=>'• '+escapeHtml(x)).join('<br>')}</div>` : `<div style="background:#E1F3EA;color:#206B48;border-radius:8px;padding:8px 10px;font-size:11px;margin-bottom:8px;">✅ Aucun signal d'alerte.</div>`}
+      <table style="width:100%;border-collapse:collapse;"><tbody>
+        ${kv('Argent disponible (flux du mois en cours)', fcfa(re.argentDisponible), colM(re.argentDisponible))}
+        ${kv('Trésorerie cumulée (tous modes)', fcfa(computeTreasury().total))}
+        ${kv('Dettes envers les fournisseurs', fcfa(re.dettesCreees), re.dettesCreees>0?'#8E1C2B':'')}
+        ${kv('Crédits clients en cours (Fin de mois)', fcfa(encours) + ' — ' + creditActifsCount() + '/' + creditSettings().quotaMax + ' places')}
+        ${kv('Rentabilité du mois', escapeHtml(rent.statutGlobal) + ' (' + rent.scoreGlobal + '/100)')}
+        ${kv('Stock : articles OK / total', (re.stockTotal - re.stockAlertes) + ' / ' + re.stockTotal, re.stockAlertes?'#8E1C2B':'#206B48')}
+        ${kv('Employés actifs', actifs.length + (nbPause ? ' (dont ' + nbPause + ' en pause)' : ''))}
+      </tbody></table>
+    </div>`;
+    adminBlocks = courbeHtml + margesHtml + situationHtml;
+  }
+
   const body = `
   <div style="width:480px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
     ${printBrandHeader('Rapport journalier', 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
@@ -2208,6 +2314,7 @@ function printDailyReport(date){
       <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:700;margin-bottom:2px;">${fmtDate(date)}</div>
       <div style="font-size:11px;color:#93A29B;margin-bottom:14px;">Rapport édité le ${fmtDate(todayISO())}</div>
       ${kpiHtml}
+      ${adminBlocks}
       ${payHtml}
       ${miniBarChart('🏆 Produits les plus vendus (qté)', topProduits, '#C0273A')}
       ${miniBarChart('📉 Produits les moins vendus (qté)', flopProduits, '#DD9A2B')}
@@ -5563,8 +5670,10 @@ function renderRapports(){
     ['Coût matières (achats)', fcfa(t.purchasesTotal)],
     ['Dépenses d\'exploitation', fcfa(t.expensesExploitation)],
     ['Masse salariale', fcfa(t.payroll)],
-    ['Marge d\'exploitation', fcfa(t.margeExploitation)],
-    ['Marge d\'exploitation (%)', t.salesTotal? Math.round((t.margeExploitation/t.salesTotal)*1000)/10 + ' %' : '—'],
+    ['Marge d\'exploitation — mois en cours', fcfa(t.margeExploitation)],
+    ['Marge d\'exploitation du mois (% du CA du mois)', t.caMois? Math.round((t.margeExploitation/t.caMois)*1000)/10 + ' %' : '—'],
+    ['Marge d\'exploitation — cumul depuis le début', fcfa(t.margeExploitationCumul)],
+    ['Marge d\'exploitation cumulée (% du CA total)', t.salesTotal? Math.round((t.margeExploitationCumul/t.salesTotal)*1000)/10 + ' %' : '—'],
     ['Investissements de démarrage', fcfa(t.expensesInvestissement)],
     ['Résultat après investissements', fcfa(t.resultatApresInvestissements)],
   ].map(([l,v])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value" style="margin-top:8px;">${v}</div></div>`).join('');
@@ -5625,7 +5734,8 @@ function exportRapportGlobalCSV(){
     ['Total achats', t.purchasesTotal],
     ["Dépenses d'exploitation", t.expensesExploitation],
     ['Masse salariale', t.payroll],
-    ["Marge d'exploitation", t.margeExploitation],
+    ["Marge d'exploitation — mois en cours", t.margeExploitation],
+    ["Marge d'exploitation — cumul depuis le début", t.margeExploitationCumul],
     ['Investissements de démarrage', t.expensesInvestissement],
     ['Résultat après investissements', t.resultatApresInvestissements],
   ];
