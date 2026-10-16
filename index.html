@@ -492,7 +492,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
 
         <div class="panel" data-roles="admin" style="margin-bottom:22px;">
           <div class="panel-head">
-            <div><h3>📷 Réalité</h3><div class="desc">Ce que le restaurant a réellement gagné, dépensé et doit, là maintenant — pour voir vite si ça commence à déraper.</div></div>
+            <div><h3>📷 Réalité du mois</h3><div class="desc">Ce que le restaurant a réellement gagné, dépensé et doit — pour voir vite si ça commence à déraper.</div></div>
           </div>
           <div class="panel-body">
             <div id="realiteAlerte" style="margin-bottom:12px;"></div>
@@ -510,7 +510,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         <div class="charts-grid">
           <div class="panel full" data-roles="admin">
             <div class="panel-head">
-              <div><h3>Ventes &amp; Achats — courbes combinées</h3><div class="desc">Les deux courbes sur le même graphique, avec l'écart entre ce qu'on vend et ce qu'on achète</div></div>
+              <div><h3>Ventes &amp; Achats</h3><div class="desc">Les deux courbes sur le même graphique, avec l'écart entre ce qu'on vend et ce qu'on achète</div></div>
               <div class="tabs-mini" id="vaTabs">
                 <button data-g="jour" class="active">Jour</button>
                 <button data-g="semaine">Semaine</button>
@@ -522,7 +522,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
               <div id="vaSummary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;"></div>
             </div>
           </div>
-          <div class="panel">
+          <div class="panel" data-roles="cashier">
             <div class="panel-head">
               <div><h3>Évolution des ventes</h3><div class="desc">Chiffre d'affaires par jour</div></div>
             </div>
@@ -530,32 +530,9 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
           </div>
           <div class="panel" data-roles="admin">
             <div class="panel-head">
-              <div><h3>Évolution des achats</h3><div class="desc">Achats + prises fournisseurs, par jour</div></div>
+              <div><h3>Bénéfices journaliers</h3><div class="desc">7 derniers jours — vert si positif, rouge si négatif</div></div>
             </div>
-            <div class="panel-body"><div class="chart-wrap tall"><canvas id="chartAchatsEvo"></canvas></div></div>
-          </div>
-          <div class="panel">
-            <div class="panel-head">
-              <div><h3>Ventes par catégorie</h3><div class="desc">Répartition du CA</div></div>
-            </div>
-            <div class="panel-body"><div class="chart-wrap tall"><canvas id="chartVentesCat"></canvas></div></div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-head">
-              <div><h3>Produits vendus</h3><div class="desc">Classement par quantité</div></div>
-              <div class="tabs-mini" id="topFlopTabs">
-                <button data-mode="top" class="active">Plus vendus</button>
-                <button data-mode="flop">Moins vendus</button>
-              </div>
-            </div>
-            <div class="panel-body"><div class="chart-wrap"><canvas id="chartTopFlop"></canvas></div></div>
-          </div>
-          <div class="panel">
-            <div class="panel-head">
-              <div><h3>Fréquentation estimée</h3><div class="desc">Clients par jour (1 unité vendue = 1 client)</div></div>
-            </div>
-            <div class="panel-body"><div class="chart-wrap"><canvas id="chartFrequentation"></canvas></div></div>
+            <div class="panel-body"><div class="chart-wrap"><canvas id="chartBeneficeSemaine"></canvas></div></div>
           </div>
           <div class="panel">
             <div class="panel-head">
@@ -563,35 +540,15 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
             </div>
             <div class="panel-body"><div class="stock-rows" id="stockMiniList"></div></div>
           </div>
-
-          <div class="panel" data-roles="admin">
-            <div class="panel-head">
-              <div><h3>Bénéfices journaliers</h3><div class="desc">7 derniers jours — vert si positif, rouge si négatif</div></div>
-            </div>
-            <div class="panel-body"><div class="chart-wrap"><canvas id="chartBeneficeSemaine"></canvas></div></div>
-          </div>
-          <div class="panel" data-roles="admin">
-            <div class="panel-head">
-              <div><h3>Achats vs Ventes</h3><div class="desc">Comparaison mensuelle</div></div>
-            </div>
-            <div class="panel-body"><div class="chart-wrap"><canvas id="chartAchatsVentes"></canvas></div></div>
-          </div>
-          <div class="panel" data-roles="admin">
-            <div class="panel-head">
-              <div><h3>Évolution des recrutements</h3><div class="desc">Effectif cumulé dans le temps</div></div>
-            </div>
-            <div class="panel-body"><div class="chart-wrap"><canvas id="chartRecrutement"></canvas></div></div>
-          </div>
         </div>
       </section>
 
       <!-- ================= MENU / PLATS & RECETTES ================= -->
       <section class="page" id="page-menu">
         <div class="section-head">
-          <div><div class="eyebrow">Cuisine</div><h2>Gestion du menu — plats, prix &amp; recettes</h2></div>
+          <div><div class="eyebrow">Cuisine</div><h2>Gestion du menu — petit-déjeuner, déjeuner &amp; dîner</h2></div>
           <div class="section-actions">
             <span class="pill pill-neutral" id="menuTotalTag"></span>
-            <button class="btn btn-primary" id="btnAddProduct">➕ Ajouter un plat</button>
           </div>
         </div>
         <div class="toolbar">
@@ -601,9 +558,10 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
             <option>Petit-déjeuner</option><option>Déjeuner</option><option>Dîner</option><option>Toute la journée</option>
           </select>
         </div>
+        <div id="menuLegacyNote" style="margin-bottom:10px;"></div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Plat</th><th>Catégorie</th><th>Période</th><th>Prix vente</th><th>Coût matière</th><th>Ingrédients</th><th></th></tr></thead>
+            <thead><tr><th>Repas</th><th>Prix de vente</th><th>Coût matière</th><th></th></tr></thead>
             <tbody id="menuTbody"></tbody>
           </table>
         </div>
@@ -625,9 +583,18 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         </div>
 
         <div id="achatsMatieresBlock">
+          <div class="kpi-grid" id="achatsServices" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px;"></div>
+          <div id="achatsNonClasse" style="margin-bottom:10px;"></div>
           <div class="toolbar">
             <div class="search-box"><span class="ic">🔎</span><input id="achatsSearch" placeholder="Rechercher un produit ou fournisseur…"></div>
             <select class="select-filter" id="achatsCatFilter"></select>
+            <select class="select-filter" id="achatsServiceFilter">
+              <option value="">Tous les repas</option>
+              <option value="Petit-déjeuner">☕ Petit-déjeuner</option>
+              <option value="Déjeuner">🍛 Déjeuner</option>
+              <option value="Dîner">🌙 Dîner</option>
+              <option value="none">Non classé</option>
+            </select>
             <span class="pill pill-neutral" id="achatsTotalTag"></span>
             <div class="spacer"></div>
             <button class="btn btn-ghost" id="btnPrintDailyPurchases">🖨️ Achats du jour</button>
@@ -649,7 +616,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
           </div>
           <div class="table-wrap">
             <table class="data-table">
-              <thead><tr><th>Date</th><th>Produit</th><th>Fournisseur</th><th>Quantité</th><th>Prix unitaire</th><th>Total</th><th></th></tr></thead>
+              <thead><tr><th>Date</th><th>Repas</th><th>Produit</th><th>Fournisseur</th><th>Quantité</th><th>Prix unitaire</th><th>Total</th><th></th></tr></thead>
               <tbody id="achatsTbody"></tbody>
             </table>
           </div>
@@ -697,8 +664,17 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
             <button class="btn btn-primary" id="btnAddSale">➕ Enregistrer une vente</button>
           </div>
         </div>
+        <div class="kpi-grid" id="ventesServices" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px;"></div>
+        <div id="ventesNonClasse" style="margin-bottom:10px;"></div>
         <div class="toolbar">
           <div class="search-box"><span class="ic">🔎</span><input id="ventesSearch" placeholder="Rechercher un produit ou une commande…"></div>
+          <select class="select-filter" id="ventesServiceFilter">
+            <option value="">Tous les repas</option>
+            <option value="Petit-déjeuner">☕ Petit-déjeuner</option>
+            <option value="Déjeuner">🍛 Déjeuner</option>
+            <option value="Dîner">🌙 Dîner</option>
+            <option value="none">Non classé</option>
+          </select>
           <select class="select-filter" id="ventesPaiementFilter">
             <option value="">Tous modes de paiement</option>
             <option>Espèces</option><option>Mobile Money</option><option>Carte</option>
@@ -709,7 +685,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Date</th><th>Commande</th><th>Produit</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Paiement</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Repas</th><th>Commande</th><th>Produit</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Paiement</th><th></th></tr></thead>
             <tbody id="ventesTbody"></tbody>
           </table>
         </div>
@@ -1229,6 +1205,12 @@ function monthLabel(dateStr){
 function monthKey(dateStr){ return dateStr.slice(0,7); }
 
 /* ---------------- données de démonstration (issues du classeur importé) ---------------- */
+/* Produits simplifiés : plus de détail « pain thon », « omelette »… — seulement 3 repas, chacun avec un prix de vente. */
+const MEAL_DEFAULTS = [
+  { id:'P-PDJ', nom:'Petit-déjeuner', categorie:'Repas', periode:'Petit-déjeuner', prixVente:1500, coutMatiere:0, recipe:[], repas:true },
+  { id:'P-DEJ', nom:'Déjeuner',       categorie:'Repas', periode:'Déjeuner',       prixVente:2500, coutMatiere:0, recipe:[], repas:true },
+  { id:'P-DIN', nom:'Dîner',          categorie:'Repas', periode:'Dîner',          prixVente:2500, coutMatiere:0, recipe:[], repas:true },
+];
 function seedState(){
   const demoSupplierId = uid('SUP');
   return {
@@ -1239,6 +1221,7 @@ function seedState(){
       {id:'caissiere', username:'caissiere', nom:'Caissière', role:'cashier', passwordHash:'4b81c545381a471db3e6d604be20b8755f5c43b77faad7d5aac820f9dc45e340'},
     ],
     categories: [
+      {id:'cat-repas',  nom:'Repas',       couleur:'#DD9A2B'},
       {id:'cat-plat',   nom:'Plat',        couleur:'#C0273A'},
       {id:'cat-entree', nom:'Entrée',      couleur:'#DD9A2B'},
       {id:'cat-dessert',nom:'Dessert',     couleur:'#8B5E3C'},
@@ -1249,35 +1232,14 @@ function seedState(){
       {id:'cat-legume',  nom:'Légume',     couleur:'#206B48'},
       {id:'cat-conso',   nom:'Consommable',couleur:'#5C6E67'},
     ],
-    products: [
-      {id:'P001', nom:'Thiéboudienne rouge', categorie:'Plat', periode:'Déjeuner', prixVente:2500, coutMatiere:1100,
-        recipe:[{stockId:'stk-riz', quantite:0.3},{stockId:'stk-poisson', quantite:0.25},{stockId:'stk-huile', quantite:0.04},{stockId:'stk-oignons', quantite:0.05},{stockId:'stk-tomate', quantite:0.05},{stockId:'stk-concentre', quantite:0.03}]},
-      {id:'P002', nom:'Yassa poulet', categorie:'Plat', periode:'Déjeuner', prixVente:2000, coutMatiere:850,
-        recipe:[{stockId:'stk-poulet', quantite:0.3},{stockId:'stk-oignons', quantite:0.2},{stockId:'stk-huile', quantite:0.03}]},
-      {id:'P003', nom:'Mafé viande', categorie:'Plat', periode:'Dîner', prixVente:2200, coutMatiere:950,
-        recipe:[{stockId:'stk-viande', quantite:0.25},{stockId:'stk-arachide', quantite:0.1},{stockId:'stk-oignons', quantite:0.05},{stockId:'stk-concentre', quantite:0.02},{stockId:'stk-huile', quantite:0.02}]},
-      {id:'P004', nom:'Thiakry', categorie:'Dessert', periode:'Toute la journée', prixVente:800, coutMatiere:250,
-        recipe:[{stockId:'stk-couscous', quantite:0.15},{stockId:'stk-lait', quantite:0.2}]},
-      {id:'P005', nom:'Salade César', categorie:'Entrée', periode:'Petit-déjeuner', prixVente:1200, coutMatiere:500,
-        recipe:[{stockId:'stk-salade', quantite:0.15},{stockId:'stk-tomate', quantite:0.03}]},
-      {id:'P006', nom:'Pastels (x5)', categorie:'Entrée', periode:'Petit-déjeuner', prixVente:1000, coutMatiere:400,
-        recipe:[{stockId:'stk-farine', quantite:0.1},{stockId:'stk-poisson', quantite:0.05},{stockId:'stk-huile', quantite:0.02}]},
-      {id:'P007', nom:'Bissap', categorie:'Boisson', periode:'Toute la journée', prixVente:500, coutMatiere:100,
-        recipe:[{stockId:'stk-bissap', quantite:0.02}]},
-      {id:'P008', nom:'Bouye', categorie:'Boisson', periode:'Toute la journée', prixVente:600, coutMatiere:150,
-        recipe:[{stockId:'stk-bouye', quantite:0.03}]},
-      {id:'P009', nom:'Eau minérale 50cl', categorie:'Boisson', periode:'Toute la journée', prixVente:300, coutMatiere:120,
-        recipe:[{stockId:'stk-eau', quantite:1}]},
-      {id:'P010', nom:'Riz au poisson braisé', categorie:'Plat', periode:'Dîner', prixVente:2800, coutMatiere:1300,
-        recipe:[{stockId:'stk-riz', quantite:0.3},{stockId:'stk-poisson', quantite:0.3},{stockId:'stk-huile', quantite:0.03},{stockId:'stk-oignons', quantite:0.05}]},
-    ],
+    products: MEAL_DEFAULTS.map(m=>({...m, recipe:[]})),
     purchases: [
-      {id:uid('ACH'), date:'2026-08-20', nom:'Riz brisé', categorie:'Féculent', quantite:50, unite:'kg', prixUnitaire:500, fournisseur:'Marché Sandaga', total:25000, stockId:'stk-riz'},
-      {id:uid('ACH'), date:'2026-08-22', nom:'Poulet', categorie:'Protéine', quantite:30, unite:'kg', prixUnitaire:2200, fournisseur:'Poissonnerie Rue 10', total:66000, stockId:'stk-poulet'},
-      {id:uid('ACH'), date:'2026-08-24', nom:'Huile végétale', categorie:'Condiment', quantite:20, unite:'L', prixUnitaire:950, fournisseur:'Grossiste Touba', total:19000, stockId:'stk-huile'},
-      {id:uid('ACH'), date:'2026-08-25', nom:'Tomate fraîche', categorie:'Légume', quantite:15, unite:'kg', prixUnitaire:450, fournisseur:'Marché Sandaga', total:6750, stockId:'stk-tomate'},
-      {id:uid('ACH'), date:'2026-08-21', nom:'Eau minérale 50cl', categorie:'Boisson', quantite:96, unite:'unité', prixUnitaire:150, fournisseur:'Fournisseur Boissons SN', total:14400, stockId:'stk-eau'},
-      {id:uid('ACH'), date:'2026-08-18', nom:'Bissap (fleurs séchées)', categorie:'Boisson', quantite:8, unite:'kg', prixUnitaire:1800, fournisseur:'Marché Sandaga', total:14400, stockId:'stk-bissap'},
+      {id:uid('ACH'), date:'2026-08-20', nom:'Riz brisé', categorie:'Féculent', quantite:50, unite:'kg', prixUnitaire:500, fournisseur:'Marché Sandaga', total:25000, stockId:'stk-riz', service:'Déjeuner'},
+      {id:uid('ACH'), date:'2026-08-22', nom:'Poulet', categorie:'Protéine', quantite:30, unite:'kg', prixUnitaire:2200, fournisseur:'Poissonnerie Rue 10', total:66000, stockId:'stk-poulet', service:'Déjeuner'},
+      {id:uid('ACH'), date:'2026-08-24', nom:'Huile végétale', categorie:'Condiment', quantite:20, unite:'L', prixUnitaire:950, fournisseur:'Grossiste Touba', total:19000, stockId:'stk-huile', service:'Dîner'},
+      {id:uid('ACH'), date:'2026-08-25', nom:'Tomate fraîche', categorie:'Légume', quantite:15, unite:'kg', prixUnitaire:450, fournisseur:'Marché Sandaga', total:6750, stockId:'stk-tomate', service:'Déjeuner'},
+      {id:uid('ACH'), date:'2026-08-21', nom:'Eau minérale 50cl', categorie:'Boisson', quantite:96, unite:'unité', prixUnitaire:150, fournisseur:'Fournisseur Boissons SN', total:14400, stockId:'stk-eau', service:'Petit-déjeuner'},
+      {id:uid('ACH'), date:'2026-08-18', nom:'Bissap (fleurs séchées)', categorie:'Boisson', quantite:8, unite:'kg', prixUnitaire:1800, fournisseur:'Marché Sandaga', total:14400, stockId:'stk-bissap', service:'Petit-déjeuner'},
     ],
     expenses: [
       {id:uid('DEP'), date:'2026-08-01', categorie:'Loyer', description:'Loyer local commercial - Août', montant:150000, type:'Exploitation'},
@@ -1291,14 +1253,12 @@ function seedState(){
       {id:uid('DEP'), date:'2026-08-02', categorie:'Équipement', description:'Achat mobilier et équipement de cuisine (démarrage)', montant:600000, type:'Investissement'},
     ],
     sales: [
-      {id:uid('V'), date:'2026-08-25', commande:'C001', table:3, produitId:'P001', produitNom:'Thiéboudienne rouge', quantite:2, prixUnitaire:2500, total:5000, paiement:'Espèces'},
-      {id:uid('V'), date:'2026-08-25', commande:'C001', table:3, produitId:'P007', produitNom:'Bissap', quantite:2, prixUnitaire:500, total:1000, paiement:'Espèces'},
-      {id:uid('V'), date:'2026-08-25', commande:'C002', table:1, produitId:'P002', produitNom:'Yassa poulet', quantite:1, prixUnitaire:2000, total:2000, paiement:'Mobile Money'},
-      {id:uid('V'), date:'2026-08-26', commande:'C003', table:5, produitId:'P010', produitNom:'Riz au poisson braisé', quantite:3, prixUnitaire:2800, total:8400, paiement:'Carte'},
-      {id:uid('V'), date:'2026-08-26', commande:'C004', table:4, produitId:'P006', produitNom:'Pastels (x5)', quantite:1, prixUnitaire:1000, total:1000, paiement:'Espèces'},
-      {id:uid('V'), date:'2026-08-26', commande:'C004', table:4, produitId:'P008', produitNom:'Bouye', quantite:1, prixUnitaire:600, total:600, paiement:'Espèces'},
-      {id:uid('V'), date:'2026-08-27', commande:'C005', table:2, produitId:'P003', produitNom:'Mafé viande', quantite:2, prixUnitaire:2200, total:4400, paiement:'Mobile Money'},
-      {id:uid('V'), date:'2026-08-27', commande:'C006', table:6, produitId:'P004', produitNom:'Thiakry', quantite:4, prixUnitaire:800, total:3200, paiement:'Espèces'},
+      {id:uid('V'), date:'2026-08-25', commande:'C001', table:3, produitId:'P-DEJ', service:'Déjeuner', produitNom:'Déjeuner', quantite:2, prixUnitaire:3000, total:6000, paiement:'Espèces'},
+      {id:uid('V'), date:'2026-08-25', commande:'C002', table:1, produitId:'P-DEJ', service:'Déjeuner', produitNom:'Déjeuner', quantite:1, prixUnitaire:2000, total:2000, paiement:'Mobile Money'},
+      {id:uid('V'), date:'2026-08-26', commande:'C003', table:5, produitId:'P-DIN', service:'Dîner', produitNom:'Dîner', quantite:3, prixUnitaire:2800, total:8400, paiement:'Carte'},
+      {id:uid('V'), date:'2026-08-26', commande:'C004', table:4, produitId:'P-PDJ', service:'Petit-déjeuner', produitNom:'Petit-déjeuner', quantite:1, prixUnitaire:1600, total:1600, paiement:'Espèces'},
+      {id:uid('V'), date:'2026-08-27', commande:'C005', table:2, produitId:'P-DEJ', service:'Déjeuner', produitNom:'Déjeuner', quantite:2, prixUnitaire:2200, total:4400, paiement:'Mobile Money'},
+      {id:uid('V'), date:'2026-08-27', commande:'C006', table:6, produitId:'P-DIN', service:'Dîner', produitNom:'Dîner', quantite:4, prixUnitaire:800, total:3200, paiement:'Espèces'},
     ],
     stockLists: [
       {id:'sl-principal', nom:'Stock principal'},
@@ -1371,6 +1331,10 @@ function ensureDataIntegrity(){
     state.users = seed.users;
     changed = true;
   }
+  // Produits simplifiés : garantit la présence des 3 repas (sans toucher aux anciens plats éventuels)
+  if(!Array.isArray(state.products)) state.products = [];
+  MEAL_DEFAULTS.forEach(m=>{ if(!state.products.some(p=>p.repas && p.periode===m.periode)){ state.products.push({...m, recipe:[]}); changed = true; } });
+  if(state.categories && !state.categories.some(c=>c.nom==='Repas')){ state.categories.unshift({id:'cat-repas', nom:'Repas', couleur:'#DD9A2B'}); changed = true; }
   // Anciens produits enregistrés avant l'ajout des recettes/périodes : compléter sans écraser l'existant
   (state.products||[]).forEach(p=>{
     if(!p.periode){ p.periode = 'Toute la journée'; changed = true; }
@@ -1492,15 +1456,29 @@ function distinctOrdersOn(date){ return new Set(state.sales.filter(s=>s.date===d
 function salesCountOn(date){ return state.sales.filter(s=>s.date===date).length; }
 function qtyVenduOn(date){ return state.sales.filter(s=>s.date===date).reduce((a,s)=>a+Number(s.quantite||0),0); }
 
+/* Prises à crédit chez les fournisseurs = DÉPENSES, comptabilisées à la date de la prise (pas à celle du règlement).
+   Le règlement ultérieur rembourse la dette : il n'est donc plus compté comme dépense (sinon double comptage),
+   mais il reste une sortie d'argent pour la trésorerie. */
+function supplierPrisesAsExpenses(){
+  return state.supplierTransactions.filter(t=>t.type==='prise').map(t=>{
+    const sup = state.suppliers.find(x=>x.id===t.supplierId);
+    return { id:'prise-'+t.id, date:t.date, categorie:'Prises fournisseurs',
+      description:'Prise à crédit — ' + (sup?sup.nom:'fournisseur') + (t.description ? ' : ' + t.description : ''),
+      type:'Exploitation', montant:Number(t.montant)||0, source:'fournisseur', supplierId:t.supplierId };
+  });
+}
+function allExpenses(){ return [...state.expenses, ...supplierPrisesAsExpenses()]; }
+
 function computeTotals(){
   const salesTotal = state.sales.reduce((a,s)=>a+s.total,0);
   const purchasesTotal = state.purchases.reduce((a,p)=>a+p.total,0);
-  const expensesTotal = state.expenses.reduce((a,e)=>a+e.montant,0);
-  const expensesExploitation = state.expenses.filter(e=>e.type!=='Investissement').reduce((a,e)=>a+e.montant,0);
-  const expensesInvestissement = state.expenses.filter(e=>e.type==='Investissement').reduce((a,e)=>a+e.montant,0);
+  const expensesAll = allExpenses(); // dépenses saisies + prises à crédit chez les fournisseurs
+  const expensesTotal = expensesAll.reduce((a,e)=>a+e.montant,0);
+  const expensesExploitation = expensesAll.filter(e=>e.type!=='Investissement').reduce((a,e)=>a+e.montant,0);
+  const expensesInvestissement = expensesAll.filter(e=>e.type==='Investissement').reduce((a,e)=>a+e.montant,0);
   const payroll = activeEmployees().reduce((a,e)=>a+Number(e.salaire||0),0);
   // Marge d'exploitation = fonctionnement quotidien (hors coûts de démarrage), liée au MOIS EN COURS :
-  // CA du mois − achats du mois − dépenses d'exploitation du mois − salaires versés du mois − paiements fournisseurs du mois.
+  // CA du mois − achats du mois − dépenses d'exploitation du mois (prises fournisseurs à crédit comprises) − salaires versés du mois.
   // (Même calcul que la marge utilisée dans le score de Rentabilité, pour que les deux chiffres concordent.)
   const margeExploitation = monthlyMarge(todayISO().slice(0,7));
   // Cumul depuis le début (ancienne définition) : sert de base au résultat global après investissements
@@ -1528,19 +1506,17 @@ function computeTotals(){
 function dailyMarge(date){
   const ventes = state.sales.filter(s=>s.date===date).reduce((s,v)=>s+v.total,0);
   const achats = state.purchases.filter(p=>p.date===date).reduce((s,p)=>s+p.total,0);
-  const depensesExpl = state.expenses.filter(e=>e.date===date && e.type!=='Investissement').reduce((s,e)=>s+e.montant,0);
+  const depensesExpl = allExpenses().filter(e=>e.date===date && e.type!=='Investissement').reduce((s,e)=>s+e.montant,0);
   const salaires = state.salaryPayments.filter(p=>p.date===date).reduce((s,p)=>s+p.montant,0);
-  const fournPaiements = state.supplierTransactions.filter(t=>t.date===date && t.type==='paiement').reduce((s,t)=>s+t.montant,0);
-  return ventes - achats - depensesExpl - salaires - fournPaiements;
+  return ventes - achats - depensesExpl - salaires;
 }
 /* Bénéfice total d'un mois donné (format 'AAAA-MM') */
 function monthlyMarge(mKey){
   const ventes = state.sales.filter(s=>monthKey(s.date)===mKey).reduce((s,v)=>s+v.total,0);
   const achats = state.purchases.filter(p=>monthKey(p.date)===mKey).reduce((s,p)=>s+p.total,0);
-  const depensesExpl = state.expenses.filter(e=>monthKey(e.date)===mKey && e.type!=='Investissement').reduce((s,e)=>s+e.montant,0);
+  const depensesExpl = allExpenses().filter(e=>monthKey(e.date)===mKey && e.type!=='Investissement').reduce((s,e)=>s+e.montant,0);
   const salaires = state.salaryPayments.filter(p=>monthKey(p.date)===mKey).reduce((s,p)=>s+p.montant,0);
-  const fournPaiements = state.supplierTransactions.filter(t=>monthKey(t.date)===mKey && t.type==='paiement').reduce((s,t)=>s+t.montant,0);
-  return ventes - achats - depensesExpl - salaires - fournPaiements;
+  return ventes - achats - depensesExpl - salaires;
 }
 function last7Days(){
   const days = [];
@@ -1551,7 +1527,7 @@ function last7Days(){
 function monthlyVentesTotal(mKey){ return state.sales.filter(s=>monthKey(s.date)===mKey).reduce((s,v)=>s+v.total,0); }
 function monthlyExpensesTotal(mKey){
   const achats = state.purchases.filter(p=>monthKey(p.date)===mKey).reduce((s,p)=>s+p.total,0);
-  const depensesExpl = state.expenses.filter(e=>monthKey(e.date)===mKey && e.type!=='Investissement').reduce((s,e)=>s+e.montant,0);
+  const depensesExpl = allExpenses().filter(e=>monthKey(e.date)===mKey && e.type!=='Investissement').reduce((s,e)=>s+e.montant,0);
   const salaires = state.salaryPayments.filter(p=>monthKey(p.date)===mKey).reduce((s,p)=>s+p.montant,0);
   return achats + depensesExpl + salaires;
 }
@@ -1785,7 +1761,9 @@ function computeRealite(){
   const mKey = todayISO().slice(0,7);
   const caReel = monthlyVentesTotal(mKey);
   const achatsReels = state.purchases.filter(p=>monthKey(p.date)===mKey).reduce((a,p)=>a+p.total, 0);
-  const depensesReelles = state.expenses.filter(e=>monthKey(e.date)===mKey).reduce((a,e)=>a+e.montant, 0);
+  const depensesReelles = allExpenses().filter(e=>monthKey(e.date)===mKey).reduce((a,e)=>a+e.montant, 0);
+  const prisesMois = supplierPrisesAsExpenses().filter(e=>monthKey(e.date)===mKey).reduce((a,e)=>a+e.montant, 0);
+  const depensesPayeesMois = state.expenses.filter(e=>monthKey(e.date)===mKey).reduce((a,e)=>a+e.montant, 0); // sorties d'argent réelles
   const dettesCreees = state.suppliers.reduce((s,sup)=> s + Math.max(supplierBalance(sup.id), 0), 0);
   // Argent disponible = flux de trésorerie du MOIS EN COURS uniquement (CA du mois − sorties du mois),
   // pas le cumul depuis le début : les grosses dépenses d'investissement de démarrage ne doivent plus
@@ -1793,10 +1771,11 @@ function computeRealite(){
   const salairesMois = state.salaryPayments.filter(p=>monthKey(p.date)===mKey).reduce((a,p)=>a+p.montant, 0);
   const fournisseurPaiementsMois = state.supplierTransactions.filter(t=>t.type==='paiement' && monthKey(t.date)===mKey).reduce((a,t)=>a+t.montant, 0);
   const treasuryMouvementsMois = state.treasuryMovements.filter(m=>monthKey(m.date)===mKey).reduce((a,m)=> a + (m.type==='entree' ? m.montant : -m.montant), 0);
-  const argentDisponible = caReel - achatsReels - depensesReelles - salairesMois - fournisseurPaiementsMois + treasuryMouvementsMois;
+  // Flux de trésorerie : les prises à crédit ne sont pas encore sorties de la caisse, seuls les règlements fournisseurs le sont.
+  const argentDisponible = caReel - achatsReels - depensesPayeesMois - salairesMois - fournisseurPaiementsMois + treasuryMouvementsMois;
   const stockAlertes = state.stock.filter(s=>Number(s.actuel) < Number(s.min)).length;
   const stockTotal = state.stock.length;
-  return { mKey, caReel, achatsReels, depensesReelles, dettesCreees, argentDisponible, stockAlertes, stockTotal };
+  return { mKey, caReel, achatsReels, depensesReelles, prisesMois, dettesCreees, argentDisponible, stockAlertes, stockTotal };
 }
 function renderRealite(){
   const r = computeRealite();
@@ -1812,7 +1791,7 @@ function renderRealite(){
   const cards = [
     {label:'CA réel', value:fcfa(r.caReel), note:'Encaissé ce mois-ci', icon:'💰', accent:'--leaf', tint:'--leaf-tint'},
     {label:'Achats réels', value:fcfa(r.achatsReels), note:'Payés aux fournisseurs ce mois-ci', icon:'🛒', accent:'--teal-800', tint:'--line-soft'},
-    {label:'Dépenses réelles', value:fcfa(r.depensesReelles), note:'Toutes dépenses ce mois-ci', icon:'🧾', accent:'--millet', tint:'--millet-tint'},
+    {label:'Dépenses réelles', value:fcfa(r.depensesReelles), note: r.prisesMois ? 'Dont ' + fcfa(r.prisesMois) + ' de prises fournisseurs à crédit' : 'Toutes dépenses ce mois-ci', icon:'🧾', accent:'--millet', tint:'--millet-tint'},
     {label:'Dettes créées', value:fcfa(r.dettesCreees), neg:r.dettesCreees>0, note:'Dues aux fournisseurs, à ce jour', icon:'📒', accent: r.dettesCreees>0 ? '--bissap':'--leaf', tint: r.dettesCreees>0?'--bissap-tint':'--leaf-tint'},
     {label:'Argent disponible', value:fcfa(r.argentDisponible), neg:r.argentDisponible<0, note:'Flux du mois en cours (CA − sorties), hors cumul passé', icon:'🏦', accent: r.argentDisponible>=0?'--sky':'--bissap', tint: r.argentDisponible>=0?'--sky-tint':'--bissap-tint'},
     {label:'Stock restant', value:(r.stockTotal-r.stockAlertes)+' / '+r.stockTotal+' articles OK', neg:r.stockAlertes>0, note: r.stockAlertes>0 ? r.stockAlertes+' article(s) sous le seuil d\'alerte' : 'Aucun article en alerte', icon:'📦', accent: r.stockAlertes>0?'--bissap':'--leaf', tint: r.stockAlertes>0?'--bissap-tint':'--leaf-tint'},
@@ -1827,7 +1806,7 @@ function renderRealite(){
 }
 
 /* ---- Courbes combinées Ventes & Achats (jour / semaine / mois) ----
-   Ventes = CA ; Achats = achats matières + prises chez les fournisseurs (même définition que la courbe « Évolution des achats »).
+   Ventes = CA ; Achats = achats de matières (les prises à crédit chez les fournisseurs sont comptées dans les DÉPENSES).
    La fenêtre se termine à la dernière date d'activité (aujourd'hui si des données existent aujourd'hui). */
 let vaGranularity = 'jour';
 function isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -1848,8 +1827,7 @@ function computeVentesAchatsSeries(g, endDate){
   const ventes = {}, achats = {};
   state.sales.forEach(x=>{ const k=vaBucketKey(x.date,g); ventes[k]=(ventes[k]||0)+x.total; });
   state.purchases.forEach(x=>{ const k=vaBucketKey(x.date,g); achats[k]=(achats[k]||0)+x.total; });
-  state.supplierTransactions.forEach(t=>{ if(t.type==='prise'){ const k=vaBucketKey(t.date,g); achats[k]=(achats[k]||0)+t.montant; } });
-  const allDates = [...state.sales.map(x=>x.date), ...state.purchases.map(x=>x.date), ...state.supplierTransactions.filter(t=>t.type==='prise').map(t=>t.date)];
+  const allDates = [...state.sales.map(x=>x.date), ...state.purchases.map(x=>x.date)];
   // endDate : fenêtre imposée (rapport imprimé) ; sinon la fenêtre se termine à la dernière date d'activité
   const lastDate = endDate || (allDates.length ? allDates.reduce((a,b)=>a>b?a:b) : todayISO());
   const nb = g==='jour' ? 30 : 12;
@@ -1907,31 +1885,19 @@ function renderVentesAchatsCombine(){
 }
 
 function renderDashboard(){
-  renderRealite();
-  renderVentesAchatsCombine();
   const t = computeTotals();
-  const c = document.getElementById('dashKpis');
   const admin = isAdmin();
+  if(admin){ renderRealite(); renderVentesAchatsCombine(); } // panneaux financiers réservés à l'admin
+  // Tableau de bord simplifié : l'essentiel du jour. Les totaux détaillés (achats, dépenses, masse salariale,
+  // clients du mois, etc.) restent disponibles dans la page Rapports.
+  const pctMarge = t.caMois ? Math.round(t.margeExploitation / t.caMois * 1000) / 10 : null;
   const cards = [
     {label:"CA du jour", value:fcfa(t.caJour), icon:'☀️', accent:'--millet', tint:'--millet-tint'},
-    {label:"CA de la semaine", value:fcfa(t.caSemaine), icon:'📅', accent:'--sky', tint:'--sky-tint'},
-    {label:"CA du mois", value:fcfa(t.caMois), icon:'🗓️', accent:'--teal-800', tint:'--line-soft'},
-    admin && {label:"Marge d'exploitation", value:fcfa(t.margeExploitation), neg:t.margeExploitation<0, icon:'📈', accent: t.margeExploitation>=0?'--leaf':'--bissap', tint: t.margeExploitation>=0?'--leaf-tint':'--bissap-tint', note:"Mois en cours" + (t.caMois ? " — " + (Math.round(t.margeExploitation/t.caMois*1000)/10) + "% du CA du mois" : " — aucun CA ce mois-ci")},
-    admin && {label:"Résultat après investissements", value:fcfa(t.resultatApresInvestissements), neg:t.resultatApresInvestissements<0, icon:'🏗️', accent:'--bissap', tint:'--bissap-tint', note:"Cumul depuis le début, coûts de lancement inclus"},
-    admin && {label:"Bénéfice (semaine)", value:fcfa(last7Days().reduce((s,d)=>s+dailyMarge(d),0)), neg:last7Days().reduce((s,d)=>s+dailyMarge(d),0)<0, icon:'📅', accent:'--leaf', tint:'--leaf-tint', note:"7 derniers jours"},
-    admin && {label:"Bénéfice (mois)", value:fcfa(monthlyMarge(todayISO().slice(0,7))), neg:monthlyMarge(todayISO().slice(0,7))<0, icon:'🗓️', accent:'--leaf', tint:'--leaf-tint', note:"Mois en cours"},
-    {label:"Produits vendus", value:fmt(t.qtyVendue)+" unités", icon:'🍽️', accent:'--leaf', tint:'--leaf-tint'},
-    {label:"Clients du jour (estimé)", value:fmt(t.clientsJour), note:"1 unité vendue = 1 client", icon:'🧍', accent:'--sky', tint:'--sky-tint'},
-    {label:"Clients (mois)", value:fmt(t.clientsMois), note:"1 unité vendue = 1 client, mois en cours", icon:'👥', accent:'--sky', tint:'--sky-tint'},
-    {label:"Clients (total)", value:fmt(t.clientsTotal), note:"Quantité totale vendue depuis le début", icon:'📈', accent:'--sky', tint:'--sky-tint'},
-    admin && {label:"Total achats", value:fcfa(t.purchasesTotal), icon:'🛒', accent:'--teal-800', tint:'--line-soft'},
-    admin && {label:"Total dépenses", value:fcfa(t.expensesTotal), icon:'💰', accent:'--bissap', tint:'--bissap-tint'},
-    admin && {label:"Masse salariale", value:fcfa(t.payroll), note:activeEmployees().length+" employé(s) actif(s)", icon:'👥', accent:'--teal-800', tint:'--line-soft'},
-    admin && {label:"Salaires versés (mois)", value:fcfa(state.salaryPayments.filter(p=>monthKey(p.date)===todayISO().slice(0,7)).reduce((s,p)=>s+p.montant,0)), note:state.salaryPayments.filter(p=>monthKey(p.date)===todayISO().slice(0,7)).length+" paiement(s) ce mois-ci", icon:'💵', accent:'--leaf', tint:'--leaf-tint'},
-    {label:"Panier moyen", value:fcfa(t.panierMoyen), note:t.orders+" commande(s)", icon:'🧾', accent:'--sky', tint:'--sky-tint'},
-    {label:"Alertes stock", value:t.alerts+" article(s)", icon:'⚠️', accent:'--bissap', tint:'--bissap-tint'},
+    {label:"Clients du jour", value:fmt(t.clientsJour), note:"1 unité vendue = 1 client", icon:'🧍', accent:'--sky', tint:'--sky-tint'},
+    {label:"Panier moyen", value:fcfa(t.panierMoyen), note:t.orders+" commande(s)", icon:'🧾', accent:'--teal-800', tint:'--line-soft'},
+    admin && {label:"Marge d'exploitation", value:fcfa(t.margeExploitation), neg:t.margeExploitation<0, icon:'📈', accent: t.margeExploitation>=0?'--leaf':'--bissap', tint: t.margeExploitation>=0?'--leaf-tint':'--bissap-tint', note:"Mois en cours" + (pctMarge!==null ? " — " + pctMarge + "% du CA du mois" : " — aucun CA ce mois-ci")},
   ].filter(Boolean);
-  c.innerHTML = cards.map(k => `
+  document.getElementById('dashKpis').innerHTML = cards.map(k => `
     <div class="kpi-card" style="--accent:var(${k.accent});--accent-tint:var(${k.tint})">
       <div class="kpi-top">
         <span class="kpi-label">${k.label}</span>
@@ -1941,55 +1907,6 @@ function renderDashboard(){
       ${k.note?`<div class="kpi-note">${k.note}</div>`:''}
     </div>`).join('');
 
-  // Évolution des ventes (par jour)
-  const byDate = {};
-  state.sales.forEach(s => { byDate[s.date] = (byDate[s.date]||0) + s.total; });
-  const dateLabels = Object.keys(byDate).sort();
-
-  // Évolution des achats (par jour) : calculée ici aussi pour synchroniser l'échelle Y avec le graphique des ventes
-  const byDateAchatsForScale = {};
-  state.purchases.forEach(p=>{ byDateAchatsForScale[p.date] = (byDateAchatsForScale[p.date]||0) + p.total; });
-  state.supplierTransactions.forEach(t=>{ if(t.type==='prise'){ byDateAchatsForScale[t.date] = (byDateAchatsForScale[t.date]||0) + t.montant; } });
-  const sharedEvoMax = Math.max(1, ...Object.values(byDate), ...Object.values(byDateAchatsForScale)) * 1.05;
-
-  drawChart('chartVentesEvo', {
-    type:'line',
-    data:{ labels:dateLabels.map(d=>d.slice(5).split('-').reverse().join('/')),
-      datasets:[{ label:'CA (FCFA)', data:dateLabels.map(d=>byDate[d]), borderColor:'#C0273A',
-        backgroundColor:'rgba(192,39,58,.08)', fill:true, tension:.35, pointBackgroundColor:'#C0273A', pointRadius:4 }]},
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ y:{ beginAtZero:true, max:sharedEvoMax, grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
-  });
-
-  // Répartition des ventes par catégorie
-  const byCat = {};
-  state.sales.forEach(s=>{
-    const p = state.products.find(p=>p.id===s.produitId);
-    const cat = p ? p.categorie : 'Autre';
-    byCat[cat] = (byCat[cat]||0) + s.total;
-  });
-  const catLabels = Object.keys(byCat);
-  drawChart('chartVentesCat', {
-    type:'doughnut',
-    data:{ labels:catLabels, datasets:[{ data:catLabels.map(l=>byCat[l]), backgroundColor:catLabels.map(catColor), borderWidth:2, borderColor:'#fff' }] },
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{legend:{position:'bottom'}} }
-  });
-
-  renderTopFlopChart('top');
-
-  // Fréquentation estimée (1 unité vendue = 1 client, par jour), 14 derniers jours
-  const freqDays = [];
-  const freqToday = new Date(); freqToday.setHours(0,0,0,0);
-  for(let i=13;i>=0;i--){ const d=new Date(freqToday); d.setDate(d.getDate()-i); freqDays.push(d.toISOString().slice(0,10)); }
-  drawChart('chartFrequentation', {
-    type:'bar',
-    data:{ labels: freqDays.map(d=>d.slice(5).split('-').reverse().join('/')),
-      datasets:[{ label:'Clients estimés', data: freqDays.map(d=>qtyVenduOn(d)), backgroundColor:'#2C6E9E', borderRadius:6 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ y:{beginAtZero:true, ticks:{stepSize:1}, grid:{color:'#EEF2EE'}}, x:{grid:{display:false}} } }
-  });
-
-  // Achats vs Ventes par mois, Évolution des achats par jour, et Évolution des recrutements — réservés à l'Admin Principal (données financières/RH)
   if(admin){
     // Rentabilité = Marge + Trésorerie saine + Durabilité
     const r = computeRentabilite();
@@ -2017,16 +1934,6 @@ function renderDashboard(){
       ${rowHtml('🌱','Durabilité', r.durabiliteLabel, r.durabiliteScore, r.croissanceMarge===null ? "Premier mois d'activité mesurable" : `Marge ${r.croissanceMarge>=0?'en hausse':'en baisse'} de ${Math.abs(Math.round(r.croissanceMarge*10)/10)}% par rapport au mois précédent`)}
       <p style="font-size:11px;color:var(--ink-soft);margin-top:12px;line-height:1.5;">La rentabilité d'un restaurant repose sur trois éléments : une marge suffisante sur les ventes, une trésorerie saine pour couvrir les dépenses, et une gestion durable permettant à l'activité de fonctionner et de se développer dans le temps.</p>`;
 
-    // Évolution des achats par jour : achats matières + prises chez les fournisseurs (échelle Y identique à celle des ventes, calculée plus haut)
-    const dateLabelsAchats = Object.keys(byDateAchatsForScale).sort();
-    drawChart('chartAchatsEvo', {
-      type:'line',
-      data:{ labels:dateLabelsAchats.map(d=>d.slice(5).split('-').reverse().join('/')),
-        datasets:[{ label:'Achats (FCFA)', data:dateLabelsAchats.map(d=>byDateAchatsForScale[d]), borderColor:'#DD9A2B',
-          backgroundColor:'rgba(221,154,43,.1)', fill:true, tension:.35, pointBackgroundColor:'#DD9A2B', pointRadius:4 }]},
-      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-        scales:{ y:{ beginAtZero:true, max:sharedEvoMax, grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
-    });
 
     // Bénéfices journaliers de la semaine (7 derniers jours), couleur selon signe
     const semaineDays = last7Days();
@@ -2039,29 +1946,18 @@ function renderDashboard(){
       options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
         scales:{ y:{ grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
     });
-
-    const months = new Set([...state.sales.map(s=>monthKey(s.date)), ...state.purchases.map(p=>monthKey(p.date))]);
-    const sortedMonths = Array.from(months).sort();
-    const ventesParMois = sortedMonths.map(m => state.sales.filter(s=>monthKey(s.date)===m).reduce((a,s)=>a+s.total,0));
-    const achatsParMois = sortedMonths.map(m => state.purchases.filter(p=>monthKey(p.date)===m).reduce((a,p)=>a+p.total,0));
-    drawChart('chartAchatsVentes', {
-      type:'bar',
-      data:{ labels:sortedMonths.map(m=>new Date(m+'-01').toLocaleDateString('fr-FR',{month:'short',year:'2-digit'})),
-        datasets:[
-          {label:'Ventes', data:ventesParMois, backgroundColor:'#2F8F63', borderRadius:6},
-          {label:'Achats', data:achatsParMois, backgroundColor:'#DD9A2B', borderRadius:6},
-        ]},
-      options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{beginAtZero:true, grid:{color:'#EEF2EE'}}, x:{grid:{display:false}} } }
-    });
-
-    const hires = [...state.employees].sort((a,b)=>a.dateEmbauche.localeCompare(b.dateEmbauche));
-    drawChart('chartRecrutement', {
+  } else {
+    // Caissière : évolution simple du chiffre d'affaires (le graphique combiné ventes/achats est réservé à l'admin)
+    const byDate = {};
+    state.sales.forEach(s => { byDate[s.date] = (byDate[s.date]||0) + s.total; });
+    const dateLabels = Object.keys(byDate).sort();
+    drawChart('chartVentesEvo', {
       type:'line',
-      data:{ labels:hires.map(h=>new Date(h.dateEmbauche).toLocaleDateString('fr-FR',{month:'short',year:'numeric'})),
-        datasets:[{ label:'Effectif cumulé', data:hires.map((_,i)=>i+1), borderColor:'#164F4C', backgroundColor:'rgba(22,79,76,.08)',
-          fill:true, stepped:true, pointBackgroundColor:'#164F4C', pointRadius:4 }] },
+      data:{ labels:dateLabels.map(d=>d.slice(5).split('-').reverse().join('/')),
+        datasets:[{ label:'CA (FCFA)', data:dateLabels.map(d=>byDate[d]), borderColor:'#C0273A',
+          backgroundColor:'rgba(192,39,58,.08)', fill:true, tension:.35, pointBackgroundColor:'#C0273A', pointRadius:4 }]},
       options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-        scales:{ y:{beginAtZero:true, ticks:{stepSize:1}, grid:{color:'#EEF2EE'}}, x:{grid:{display:false}} } }
+        scales:{ y:{ beginAtZero:true, grid:{color:'#EEF2EE'} }, x:{ grid:{display:false} } } }
     });
   }
 
@@ -2076,22 +1972,6 @@ function renderDashboard(){
       <div class="stock-qty">${s.actuel} ${escapeHtml(s.unite)}</div>
     </div>`;
   }).join('');
-}
-
-function renderTopFlopChart(mode){
-  $$('#topFlopTabs button').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
-  const qtyByProduct = {};
-  state.sales.forEach(s => { qtyByProduct[s.produitNom] = (qtyByProduct[s.produitNom]||0) + Number(s.quantite||0); });
-  let entries = Object.entries(qtyByProduct);
-  entries.sort((a,b) => mode==='top' ? b[1]-a[1] : a[1]-b[1]);
-  entries = entries.slice(0,5);
-  drawChart('chartTopFlop', {
-    type:'bar',
-    data:{ labels:entries.map(e=>e[0]), datasets:[{ data:entries.map(e=>e[1]),
-      backgroundColor: mode==='top' ? '#C0273A' : '#DD9A2B', borderRadius:6 }] },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}}, scales:{ x:{beginAtZero:true, grid:{color:'#EEF2EE'}}, y:{grid:{display:false}} } }
-  });
 }
 
 /* ========================================================
@@ -2124,7 +2004,7 @@ function printDailyReport(date){
   const admin = isAdmin();
   const ventes = state.sales.filter(s=>s.date===date);
   const achats = state.purchases.filter(p=>p.date===date);
-  const depenses = state.expenses.filter(e=>e.date===date);
+  const depenses = allExpenses().filter(e=>e.date===date); // dépenses saisies + prises à crédit chez les fournisseurs
   const salaires = state.salaryPayments.filter(p=>p.date===date);
   const mouvements = state.treasuryMovements.filter(m=>m.date===date);
   const fournisseurOps = state.supplierTransactions.filter(t=>t.date===date);
@@ -2141,7 +2021,7 @@ function printDailyReport(date){
   const totalSalaires = salaires.reduce((s,v)=>s+v.montant,0);
   const totalFournPaiements = fournisseurOps.filter(t=>t.type==='paiement').reduce((s,t)=>s+t.montant,0);
   const totalFournPrises = fournisseurOps.filter(t=>t.type==='prise').reduce((s,t)=>s+t.montant,0);
-  const margeExploitationJour = totalVentes - totalAchats - totalDepensesExploitation - totalSalaires - totalFournPaiements;
+  const margeExploitationJour = totalVentes - totalAchats - totalDepensesExploitation - totalSalaires;
   const resultatJour = margeExploitationJour - totalDepensesInvestissement;
   const byPay = {};
   ventes.forEach(v=>{ byPay[v.paiement] = (byPay[v.paiement]||0) + v.total; });
@@ -2231,12 +2111,14 @@ function printDailyReport(date){
     const ca = ventesR.reduce((a,x)=>a+x.total,0);
     const clients = ventesR.reduce((a,x)=>a+Number(x.quantite||0),0);
     const achatsR = state.purchases.filter(x=>inR(x.date)).reduce((a,x)=>a+x.total,0);
-    const depExpl = state.expenses.filter(x=>inR(x.date)&&x.type!=='Investissement').reduce((a,x)=>a+x.montant,0);
-    const depInv = state.expenses.filter(x=>inR(x.date)&&x.type==='Investissement').reduce((a,x)=>a+x.montant,0);
+    const depAll = allExpenses().filter(x=>inR(x.date));
+    const depExpl = depAll.filter(x=>x.type!=='Investissement').reduce((a,x)=>a+x.montant,0);
+    const depInv = depAll.filter(x=>x.type==='Investissement').reduce((a,x)=>a+x.montant,0);
+    const prises = depAll.filter(x=>x.source==='fournisseur').reduce((a,x)=>a+x.montant,0);
     const sal = state.salaryPayments.filter(x=>inR(x.date)).reduce((a,x)=>a+x.montant,0);
     const fp = state.supplierTransactions.filter(x=>inR(x.date)&&x.type==='paiement').reduce((a,x)=>a+x.montant,0);
-    const marge = ca - achatsR - depExpl - sal - fp;
-    return { ca, clients, achats:achatsR, depExpl, depInv, sal, fp, marge, resultat: marge - depInv, pct: ca ? Math.round(marge/ca*1000)/10 : null };
+    const marge = ca - achatsR - depExpl - sal;
+    return { ca, clients, achats:achatsR, depExpl, prises, depInv, sal, fp, marge, resultat: marge - depInv, pct: ca ? Math.round(marge/ca*1000)/10 : null };
   }
   let adminBlocks = '';
   if(admin){
@@ -2269,13 +2151,14 @@ function printDailyReport(date){
           ${ligne('Clients (qté vendue)', fmt(mJ.clients), fmt(mM.clients))}
           ${ligne('− Achats', fmt(mJ.achats), fmt(mM.achats))}
           ${ligne("− Dépenses d'exploitation", fmt(mJ.depExpl), fmt(mM.depExpl))}
+          ${ligne('&nbsp;&nbsp;dont prises fournisseurs à crédit', fmt(mJ.prises), fmt(mM.prises))}
           ${ligne('− Salaires versés', fmt(mJ.sal), fmt(mM.sal))}
-          ${ligne('− Paiements fournisseurs', fmt(mJ.fp), fmt(mM.fp))}
           ${ligne("= Marge d'exploitation", fmt(mJ.marge), fmt(mM.marge), {bold:true, colA:colM(mJ.marge), colB:colM(mM.marge)})}
           ${ligne('Marge en % du CA', mJ.pct===null?'—':mJ.pct+' %', mM.pct===null?'—':mM.pct+' %')}
           ${(mJ.depInv||mM.depInv) ? ligne('− Investissements de démarrage', fmt(mJ.depInv), fmt(mM.depInv)) + ligne('= Résultat après investissements', fmt(mJ.resultat), fmt(mM.resultat), {bold:true, colA:colM(mJ.resultat), colB:colM(mM.resultat)}) : ''}
         </tbody>
       </table>
+      <div style="font-size:10px;color:#5C6E67;margin-top:5px;line-height:1.4;">Les prises à crédit chez les fournisseurs sont comptées en dépense le jour de la prise. Règlements aux fournisseurs : ${fmt(mJ.fp)} (jour) · ${fmt(mM.fp)} (mois) — ils remboursent la dette et ne sont pas recomptés.</div>
     </div>`;
 
     // c) situation financière à ce jour + signaux d'alerte
@@ -2307,6 +2190,16 @@ function printDailyReport(date){
     adminBlocks = courbeHtml + margesHtml + situationHtml;
   }
 
+  const stSv = statsParService(ventes);
+  const svCell = (label, icon, st, color, id)=>`<div style="flex:1;background:#F3F6F3;border-radius:10px;padding:8px 10px;border-top:3px solid ${color};"><div style="font-size:9.5px;text-transform:uppercase;color:#5C6E67;">${icon} ${label}</div><div class="mono" style="font-size:15px;font-weight:700;color:#152420;">${fmt(st.qte)} vente${st.qte>1?'s':''}</div><div style="font-size:10px;color:#5C6E67;">${fcfa(st.ca)}</div>${achLine(id)}</div>`;
+  const stAch = statsAchatsParService(achats);
+  const achLine = (id)=> admin ? `<div style="font-size:10px;color:#B67A1B;margin-top:2px;">Achats : ${fcfa(stAch[id].montant)} (${stAch[id].nb})</div>` : '';
+  const servicesHtml = `<div style="margin-bottom:16px;">
+      <div style="font-size:11.5px;font-weight:700;color:#8E1C2B;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #DD9A2B;padding-bottom:4px;margin-bottom:8px;">🍽️ ${admin?'Ventes &amp; achats':'Ventes'} par repas</div>
+      <div style="display:flex;gap:6px;">${svCell('Petit-déj.','☕',stSv['Petit-déjeuner'],'#DD9A2B','Petit-déjeuner')}${svCell('Déjeuner','🍛',stSv['Déjeuner'],'#2F8F63','Déjeuner')}${svCell('Dîner','🌙',stSv['Dîner'],'#2C6E9E','Dîner')}</div>
+      ${stSv[''].lignes ? `<div style="font-size:10px;color:#B67A1B;margin-top:4px;">${fmt(stSv[''].qte)} vente(s) sans repas renseigné.</div>` : ''}
+      ${admin && stAch[''].nb ? `<div style="font-size:10px;color:#B67A1B;margin-top:2px;">${stAch[''].nb} achat(s) sans repas renseigné (${fcfa(stAch[''].montant)}).</div>` : ''}
+    </div>`;
   const body = `
   <div style="width:480px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
     ${printBrandHeader('Rapport journalier', 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
@@ -2314,6 +2207,7 @@ function printDailyReport(date){
       <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:700;margin-bottom:2px;">${fmtDate(date)}</div>
       <div style="font-size:11px;color:#93A29B;margin-bottom:14px;">Rapport édité le ${fmtDate(todayISO())}</div>
       ${kpiHtml}
+      ${servicesHtml}
       ${adminBlocks}
       ${payHtml}
       ${miniBarChart('🏆 Produits les plus vendus (qté)', topProduits, '#C0273A')}
@@ -2345,24 +2239,70 @@ function stockUnit(stockId){ const s = state.stock.find(s=>s.id===stockId); retu
 
 function renderMenu(){
   const q = menuFilter.q.toLowerCase();
-  let rows = state.products.filter(p => (!q || p.nom.toLowerCase().includes(q)) && (!menuFilter.periode || p.periode===menuFilter.periode))
+  const meals = mealProducts().filter(p => (!q || p.nom.toLowerCase().includes(q)) && (!menuFilter.periode || p.periode===menuFilter.periode));
+  const legacy = state.products.filter(p=>!p.repas).filter(p => (!q || p.nom.toLowerCase().includes(q)) && (!menuFilter.periode || p.periode===menuFilter.periode))
     .sort((a,b)=> a.nom.localeCompare(b.nom));
-  $('#menuTotalTag').textContent = rows.length + ' plat(s) au menu';
-  $('#menuTbody').innerHTML = rows.length ? rows.map(p=>{
-    const nbIng = (p.recipe||[]).length;
-    return `<tr>
-      <td class="name-cell"><b>${escapeHtml(p.nom)}</b></td>
-      <td><span class="cat-swatch" style="background:${catColor(p.categorie)}"></span>${escapeHtml(p.categorie)}</td>
-      <td>${PERIODE_ICONS[p.periode]||''} ${escapeHtml(p.periode||'—')}</td>
-      <td class="num">${fmt(p.prixVente)}</td>
-      <td class="num">${fmt(p.coutMatiere)}</td>
-      <td>${nbIng ? `<span class="pill pill-neutral">${nbIng} ingrédient(s)</span>` : `<span class="pill pill-warn">⚠️ Aucune recette</span>`}</td>
+  const nbLegacyTotal = state.products.filter(p=>!p.repas).length;
+  $('#menuTotalTag').textContent = meals.length + ' repas' + (nbLegacyTotal ? ' • ' + nbLegacyTotal + ' ancien(s) plat(s)' : '');
+  $('#menuLegacyNote').innerHTML = nbLegacyTotal
+    ? `<div style="background:var(--millet-tint);color:var(--millet-dark);border-radius:8px;padding:10px 14px;font-size:12.5px;line-height:1.5;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+         <span>📁 Il reste <b>${nbLegacyTotal} ancien(s) plat(s) détaillé(s)</b>. Ils ne sont plus proposés à la vente (seuls les 3 repas le sont) et sont listés ci-dessous. Les ventes déjà enregistrées gardent leur historique.</span>
+         <button class="btn btn-danger btn-sm" onclick="deleteLegacyProducts()">🧹 Supprimer les anciens plats</button>
+       </div>` : '';
+  const mealRow = p => `<tr>
+      <td class="name-cell"><b>${PERIODE_ICONS[p.periode]||''} ${escapeHtml(p.nom)}</b></td>
+      <td class="num"><b>${fmt(p.prixVente)}</b> FCFA</td>
+      <td class="num">${fmt(p.coutMatiere||0)}</td>
+      <td class="actions"><div class="row-actions"><button class="icon-btn" title="Modifier le prix" onclick="openMealForm('${p.id}')">✏️</button></div></td>
+    </tr>`;
+  const legacyRow = p => `<tr style="opacity:.65;">
+      <td class="name-cell">${escapeHtml(p.nom)} <span class="pill pill-neutral">ancien plat</span></td>
+      <td class="num">${fmt(p.prixVente)} FCFA</td>
+      <td class="num">${fmt(p.coutMatiere||0)}</td>
       <td class="actions"><div class="row-actions">
         <button class="icon-btn" title="Modifier" onclick="openProductForm('${p.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteProduct('${p.id}')">🗑️</button>
       </div></td>
     </tr>`;
-  }).join('') : `<tr class="empty-row"><td colspan="7">Aucun plat trouvé.</td></tr>`;
+  $('#menuTbody').innerHTML = (meals.length || legacy.length) ? meals.map(mealRow).join('') + legacy.map(legacyRow).join('')
+    : `<tr class="empty-row"><td colspan="4">Aucun repas trouvé.</td></tr>`;
+}
+/* Prix d'un repas : seul réglage nécessaire (plus de nom de plat, de catégorie ni de recette) */
+function openMealForm(id){
+  const m = state.products.find(p=>p.id===id);
+  if(!m) return;
+  openModal({
+    title: (PERIODE_ICONS[m.periode]||'') + ' ' + m.nom + ' — prix', narrow:true,
+    bodyHtml:`
+      <form id="mealForm">
+        <div class="form-grid">
+          <div class="field full"><label>Prix de vente (FCFA)</label><input required type="number" min="0" name="prixVente" value="${m.prixVente}" autofocus></div>
+          <div class="field full"><label>Coût matière estimé (FCFA) <span class="hint">(optionnel)</span></label><input type="number" min="0" name="coutMatiere" value="${m.coutMatiere||0}"></div>
+        </div>
+        <p style="font-size:11.5px;color:var(--ink-soft);margin:4px 0 0;">Ce prix est proposé par défaut à chaque vente de ce repas ; tu peux toujours le modifier au moment de la vente.</p>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#mealForm').addEventListener('submit',(e)=>{
+        e.preventDefault();
+        const f = new FormData(e.target);
+        m.prixVente = Number(f.get('prixVente')); m.coutMatiere = Number(f.get('coutMatiere')||0);
+        persist(); closeModal(); renderMenu(); toast('Prix du ' + m.nom.toLowerCase() + ' enregistré');
+      });
+    }
+  });
+}
+function deleteLegacyProducts(){
+  const n = state.products.filter(p=>!p.repas).length;
+  passwordConfirmModal({
+    title:'Supprimer les anciens plats', confirmLabel:'Supprimer',
+    message:`Supprimer les ${n} ancien(s) plat(s) détaillé(s) du menu ? Leurs recettes (consommation automatique du stock) seront perdues. Les ventes déjà enregistrées restent dans l'historique. Cette action est irréversible.`,
+    onConfirm(){ state.products = state.products.filter(p=>p.repas); persist(); closeModal(); renderMenu(); toast('Anciens plats supprimés'); }
+  });
 }
 
 function recipeRowHtml(ing){
@@ -2460,7 +2400,18 @@ function applyRecipeToStock(produitId, quantiteVendue, sign){
   return alerts;
 }
 let achatsTab = 'achats';
-let achatsFilter = { q:'', cat:'' };
+let achatsFilter = { q:'', cat:'', service:'' };
+/* Achats par repas : le « nombre d'achats » = nombre de lignes d'achat (les quantités mélangent kg, L, unités) */
+function statsAchatsParService(rows){
+  const o = { '': {nb:0, montant:0} };
+  SERVICES.forEach(sv=>{ o[sv.id] = {nb:0, montant:0}; });
+  rows.forEach(p=>{ const k = o[p.service] ? p.service : ''; o[k].nb++; o[k].montant += p.total; });
+  return o;
+}
+function serviceOptionsHtml(item){
+  return (item && !item.service ? '<option value="" disabled selected>Choisir le repas…</option>' : '') +
+    SERVICES.map(sv=>`<option value="${sv.id}" ${(item ? item.service===sv.id : serviceParDefaut()===sv.id)?'selected':''}>${sv.icon} ${sv.id}</option>`).join('');
+}
 
 function renderAchats(){
   $$('#achatsTabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===achatsTab));
@@ -2492,10 +2443,25 @@ function renderAchatsRanking(){
 
 function renderAchatsTable(){
   const q = achatsFilter.q.toLowerCase();
-  let rows = state.purchases.filter(p =>
+  const base = state.purchases.filter(p =>
     (!q || (p.nom+p.fournisseur).toLowerCase().includes(q)) &&
     (!achatsFilter.cat || p.categorie === achatsFilter.cat)
-  ).sort((a,b)=> b.date.localeCompare(a.date));
+  );
+  // Les 3 sections (nombre et montant des achats par repas), qui servent aussi d'onglets de filtre
+  const st = statsAchatsParService(base);
+  $('#achatsServices').innerHTML = SERVICES.map(sv=>{
+    const actif = achatsFilter.service===sv.id;
+    return `<div class="kpi-card" data-service="${sv.id}" style="--accent:var(${sv.accent});--accent-tint:var(${sv.tint});cursor:pointer;${actif?'box-shadow:0 0 0 2px var('+sv.accent+');':''}" title="Cliquer pour filtrer sur ce repas">
+      <div class="kpi-top"><span class="kpi-label">${sv.id}</span><span class="kpi-badge">${sv.icon}</span></div>
+      <div class="kpi-value">${fmt(st[sv.id].nb)} achat${st[sv.id].nb>1?'s':''}</div>
+      <div class="kpi-note">${fcfa(st[sv.id].montant)}${actif?' — filtre actif':''}</div>
+    </div>`;
+  }).join('');
+  $('#achatsNonClasse').innerHTML = st[''].nb
+    ? `<div style="background:var(--millet-tint);color:var(--millet-dark);border-radius:8px;padding:8px 12px;font-size:12.5px;">⚠️ ${st[''].nb} achat(s) (${fcfa(st[''].montant)}) sans repas renseigné — choisissez « Non classé » dans le filtre pour les retrouver, puis modifiez-les (✏️) pour indiquer le repas.</div>` : '';
+  $('#achatsServiceFilter').value = achatsFilter.service;
+  let rows = base.filter(p => !achatsFilter.service || (achatsFilter.service==='none' ? !SERVICES.some(x=>x.id===p.service) : p.service===achatsFilter.service))
+    .sort((a,b)=> b.date.localeCompare(a.date));
 
   const catSel = $('#achatsCatFilter');
   catSel.innerHTML = '<option value="">Toutes catégories</option>' + state.categories.map(c=>`<option ${achatsFilter.cat===c.nom?'selected':''} value="${escapeHtml(c.nom)}">${escapeHtml(c.nom)}</option>`).join('');
@@ -2506,6 +2472,7 @@ function renderAchatsTable(){
   $('#achatsTbody').innerHTML = rows.length ? rows.map(p => `
     <tr>
       <td>${fmtDate(p.date)}</td>
+      <td>${serviceBadge(p)}</td>
       <td class="name-cell"><b>${escapeHtml(p.nom)}</b><span><span class="cat-swatch" style="background:${catColor(p.categorie)}"></span>${escapeHtml(p.categorie)}</span></td>
       <td>${escapeHtml(p.fournisseur)}</td>
       <td class="num">${fmt(p.quantite)} ${escapeHtml(p.unite)}</td>
@@ -2516,12 +2483,12 @@ function renderAchatsTable(){
         <button class="icon-btn" title="Modifier" onclick="openPurchaseForm('${p.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deletePurchase('${p.id}')">🗑️</button>
       </div></td>
-    </tr>`).join('') : `<tr class="empty-row"><td colspan="7">Aucun achat trouvé.</td></tr>`;
+    </tr>`).join('') : `<tr class="empty-row"><td colspan="8">Aucun achat trouvé.</td></tr>`;
 }
 
 function renderDepensesTable(){
   const q = achatsFilter.q.toLowerCase();
-  let rows = state.expenses.filter(e => !q || (e.categorie+e.description).toLowerCase().includes(q))
+  let rows = allExpenses().filter(e => !q || (e.categorie+e.description).toLowerCase().includes(q))
     .sort((a,b)=> b.date.localeCompare(a.date));
   const total = rows.reduce((a,e)=>a+e.montant,0);
   $('#depensesTotalTag').textContent = fcfa(total) + ' • ' + rows.length + ' dépense(s)';
@@ -2530,11 +2497,13 @@ function renderDepensesTable(){
       <td>${fmtDate(e.date)}</td>
       <td><span class="pill pill-neutral">${escapeHtml(e.categorie)}</span></td>
       <td>${escapeHtml(e.description)}</td>
-      <td>${e.type==='Investissement'?'<span class="pill pill-gold">🏗️ Investissement</span>':'<span class="pill pill-neutral">🔁 Exploitation</span>'}</td>
+      <td>${e.source==='fournisseur' ? '<span class="pill pill-warn">📦 Prise à crédit</span>' : e.type==='Investissement'?'<span class="pill pill-gold">🏗️ Investissement</span>':'<span class="pill pill-neutral">🔁 Exploitation</span>'}</td>
       <td class="num"><b>${fmt(e.montant)}</b></td>
       <td class="actions"><div class="row-actions">
-        <button class="icon-btn" title="Modifier" onclick="openExpenseForm('${e.id}')">✏️</button>
-        <button class="icon-btn danger" title="Supprimer" onclick="deleteExpense('${e.id}')">🗑️</button>
+        ${e.source==='fournisseur'
+          ? `<button class="icon-btn" title="Voir la fiche du fournisseur" onclick="viewSupplier('${e.supplierId}')">🏭</button>`
+          : `<button class="icon-btn" title="Modifier" onclick="openExpenseForm('${e.id}')">✏️</button>
+        <button class="icon-btn danger" title="Supprimer" onclick="deleteExpense('${e.id}')">🗑️</button>`}
       </div></td>
     </tr>`).join('') : `<tr class="empty-row"><td colspan="6">Aucune dépense trouvée.</td></tr>`;
 }
@@ -2580,6 +2549,7 @@ function openPurchaseForm(id){
           <div class="field"><label>Quantité achetée</label><input required type="number" min="0" step="0.01" name="quantite" value="${item?item.quantite:''}"></div>
           <div class="field"><label>Prix d'achat unitaire (FCFA)</label><input required type="number" min="0" name="prixUnitaire" value="${item?item.prixUnitaire:''}"></div>
           <div class="field"><label>Date d'achat</label><input required type="date" name="date" value="${item?item.date:todayISO()}"></div>
+          <div class="field"><label>Repas</label><select required name="service">${serviceOptionsHtml(item)}</select></div>
           <div class="field full"><label>Mode de paiement</label>
             <select name="mode">${['Espèces','Mobile Money','Carte','Banque'].map(m=>`<option ${item&&item.mode===m?'selected':''}>${m}</option>`).join('')}</select>
           </div>
@@ -2620,7 +2590,7 @@ function openPurchaseForm(id){
         }
 
         const payload = { nom, categorie, stockId, fournisseur:f.get('fournisseur').trim(),
-          quantite, unite, prixUnitaire, date, mode:f.get('mode'), total: Math.round(quantite*prixUnitaire*100)/100 };
+          quantite, unite, prixUnitaire, date, service:f.get('service'), mode:f.get('mode'), total: Math.round(quantite*prixUnitaire*100)/100 };
 
         if(item){
           // Annule l'ancienne quantité ajoutée au stock avant d'appliquer la nouvelle (y compris si l'article lié a changé)
@@ -2655,6 +2625,7 @@ function viewPurchase(id){
       <div><b>${escapeHtml(p.nom)}</b> <span class="pill pill-neutral">${escapeHtml(p.categorie)}</span></div>
       <div>Fournisseur : <b>${escapeHtml(p.fournisseur)}</b></div>
       <div>Date d'achat : <b>${fmtDate(p.date)}</b></div>
+      <div>Repas : <b>${escapeHtml(p.service||'non renseigné')}</b></div>
       <div>Quantité : <b>${fmt(p.quantite)} ${escapeHtml(p.unite)}</b></div>
       <div>Prix unitaire : <b>${fcfa(p.prixUnitaire)}</b></div>
       <div style="border-top:1px solid var(--line-soft);padding-top:10px;">Total : <b class="mono" style="font-size:16px;">${fcfa(p.total)}</b></div>
@@ -2693,6 +2664,7 @@ function printDailyPurchases(){
         <span style="font-size:12.5px;font-weight:700;color:#B67A1B;">Total des achats du jour</span>
         <span class="mono" style="font-size:18px;font-weight:700;color:#B67A1B;">${fcfa(total)}</span>
       </div>
+      <div style="display:flex;gap:6px;margin-top:10px;">${(()=>{ const st = statsAchatsParService(todays); return SERVICES.map(sv=>`<div style="flex:1;background:#F3F6F3;border-radius:8px;padding:6px 8px;"><div style="font-size:9px;text-transform:uppercase;color:#5C6E67;">${sv.icon} ${sv.id}</div><div class="mono" style="font-size:12px;font-weight:700;">${fcfa(st[sv.id].montant)}</div><div style="font-size:9.5px;color:#5C6E67;">${st[sv.id].nb} achat(s)</div></div>`).join('') + (st[''].nb ? `<div style="flex:1;background:#FBEEDA;border-radius:8px;padding:6px 8px;"><div style="font-size:9px;text-transform:uppercase;color:#B67A1B;">Non classé</div><div class="mono" style="font-size:12px;font-weight:700;">${fcfa(st[''].montant)}</div><div style="font-size:9.5px;color:#B67A1B;">${st[''].nb} achat(s)</div></div>` : ''); })()}</div>
     </div>
     ${printBrandFooter()}
   </div>`;
@@ -2877,6 +2849,9 @@ function openSupplierTransactionForm(supplierId, type){
           <div class="field"><label>Date</label><input required type="date" name="date" value="${todayISO()}"></div>
           ${isPaiement?`<div class="field full"><label>Mode de paiement</label><select name="mode">${TRESO_MODES.map(m=>`<option>${m}</option>`).join('')}</select></div>`:''}
         </div>
+        <p style="font-size:11.5px;color:var(--ink-soft);line-height:1.5;margin:4px 0 0;">${isPaiement
+          ? "Le règlement rembourse la dette : il sort de la trésorerie mais n'est pas recompté comme dépense (la prise l'a déjà été)."
+          : "Cette prise est comptée dans les <b>dépenses</b> à la date de la prise, même si elle n'est pas encore réglée. Elle augmente aussi la dette envers le fournisseur."}</p>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" data-cancel>Annuler</button>
           <button type="submit" class="btn btn-primary">${isPaiement?'Enregistrer le règlement':'Enregistrer la prise'}</button>
@@ -2939,17 +2914,48 @@ function printSupplierStatement(id){
 /* ========================================================
    PAGE : VENTES
    ======================================================== */
-let ventesFilter = { q:'', paiement:'' };
+let ventesFilter = { q:'', paiement:'', service:'' };
+
+/* ---- Repas / service : Petit-déjeuner, Déjeuner, Dîner. Le « nombre de ventes » d'un repas = quantité vendue
+   (1 unité vendue = 1 client, comme pour le reste de l'application). ---- */
+const SERVICES = [
+  { id:'Petit-déjeuner', icon:'☕', accent:'--millet', tint:'--millet-tint' },
+  { id:'Déjeuner',       icon:'🍛', accent:'--leaf',   tint:'--leaf-tint' },
+  { id:'Dîner',          icon:'🌙', accent:'--sky',    tint:'--sky-tint' },
+];
+function serviceParDefaut(){ const h = new Date().getHours(); return h < 11 ? 'Petit-déjeuner' : h < 16 ? 'Déjeuner' : 'Dîner'; }
+function statsParService(rows){
+  const o = { '': {qte:0, lignes:0, ca:0} };
+  SERVICES.forEach(sv=>{ o[sv.id] = {qte:0, lignes:0, ca:0}; });
+  rows.forEach(s=>{ const k = o[s.service] ? s.service : ''; o[k].qte += Number(s.quantite)||0; o[k].lignes++; o[k].ca += s.total; });
+  return o;
+}
+function serviceBadge(s){ return s.service ? `<span class="pill pill-neutral">${(SERVICES.find(x=>x.id===s.service)||{icon:''}).icon} ${escapeHtml(s.service)}</span>` : '<span class="pill pill-neutral">—</span>'; }
 
 function renderVentes(){
   const q = ventesFilter.q.toLowerCase();
-  let rows = state.sales.filter(s => (!q || (s.produitNom+s.commande).toLowerCase().includes(q)) && (!ventesFilter.paiement || s.paiement===ventesFilter.paiement))
+  const base = state.sales.filter(s => (!q || (s.produitNom+s.commande).toLowerCase().includes(q)) && (!ventesFilter.paiement || s.paiement===ventesFilter.paiement));
+  // Les 3 sections (nombre de ventes par repas) — elles servent aussi d'onglets de filtre
+  const st = statsParService(base);
+  $('#ventesServices').innerHTML = SERVICES.map(sv=>{
+    const actif = ventesFilter.service===sv.id;
+    return `<div class="kpi-card" data-service="${sv.id}" style="--accent:var(${sv.accent});--accent-tint:var(${sv.tint});cursor:pointer;${actif?'box-shadow:0 0 0 2px var('+sv.accent+');':''}" title="Cliquer pour filtrer sur ce repas">
+      <div class="kpi-top"><span class="kpi-label">${sv.id}</span><span class="kpi-badge">${sv.icon}</span></div>
+      <div class="kpi-value">${fmt(st[sv.id].qte)} vente${st[sv.id].qte>1?'s':''}</div>
+      <div class="kpi-note">${fcfa(st[sv.id].ca)} • ${st[sv.id].lignes} ligne(s)${actif?' — filtre actif':''}</div>
+    </div>`;
+  }).join('');
+  $('#ventesNonClasse').innerHTML = st[''].lignes
+    ? `<div style="background:var(--millet-tint);color:var(--millet-dark);border-radius:8px;padding:8px 12px;font-size:12.5px;">⚠️ ${st[''].lignes} ligne(s) de vente (${fmt(st[''].qte)} vente(s)) sans repas renseigné — choisissez « Non classé » dans le filtre pour les retrouver, puis modifiez-les (✏️) pour indiquer le repas.</div>` : '';
+  $('#ventesServiceFilter').value = ventesFilter.service;
+  let rows = base.filter(s => !ventesFilter.service || (ventesFilter.service==='none' ? !SERVICES.some(x=>x.id===s.service) : s.service===ventesFilter.service))
     .sort((a,b)=> b.date.localeCompare(a.date));
   const total = rows.reduce((a,s)=>a+s.total,0);
   $('#ventesTotalTag').textContent = fcfa(total) + ' • ' + rows.length + ' ligne(s)';
   $('#ventesTbody').innerHTML = rows.length ? rows.map(s => `
     <tr>
       <td>${fmtDate(s.date)}</td>
+      <td>${serviceBadge(s)}</td>
       <td>${escapeHtml(s.commande||'—')}${s.table?` <span class="pill pill-neutral">Table ${s.table}</span>`:''}</td>
       <td class="name-cell"><b>${escapeHtml(s.produitNom)}</b></td>
       <td class="num">${fmt(s.quantite)}</td>
@@ -2960,9 +2966,17 @@ function renderVentes(){
         <button class="icon-btn" title="Modifier" onclick="openSaleForm('${s.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteSale('${s.id}')">🗑️</button>
       </div></td>
-    </tr>`).join('') : `<tr class="empty-row"><td colspan="8">Aucune vente trouvée.</td></tr>`;
+    </tr>`).join('') : `<tr class="empty-row"><td colspan="9">Aucune vente trouvée.</td></tr>`;
 }
 
+function mealProducts(){ return SERVICES.map(sv=>state.products.find(p=>p.repas && p.periode===sv.id)).filter(Boolean); }
+function mealOptions(item){
+  const meals = mealProducts();
+  const preselect = item ? (meals.find(m=>m.id===item.produitId) || meals.find(m=>m.periode===item.service)) : meals.find(m=>m.periode===serviceParDefaut());
+  const sv = (m)=> (SERVICES.find(x=>x.id===m.periode)||{icon:''}).icon;
+  return (!preselect ? '<option value="" disabled selected>Choisir le repas…</option>' : '') +
+    meals.map(m=>`<option value="${m.id}" data-prix="${m.prixVente}" ${preselect&&preselect.id===m.id?'selected':''}>${sv(m)} ${escapeHtml(m.nom)} — ${fmt(m.prixVente)} FCFA</option>`).join('');
+}
 function productOptions(selected){
   return state.products.map(p=>`<option value="${p.id}" data-prix="${p.prixVente}" ${p.id===selected?'selected':''}>${escapeHtml(p.nom)} — ${fmt(p.prixVente)} FCFA</option>`).join('');
 }
@@ -2974,9 +2988,9 @@ function openSaleForm(id){
     bodyHtml:`
       <form id="saleForm">
         <div class="form-grid">
-          <div class="field full"><label>Produit</label><select name="produitId">${productOptions(item?item.produitId:'')}</select></div>
+          <div class="field full"><label>Repas</label><select required name="produitId">${mealOptions(item)}</select></div>
           <div class="field"><label>Quantité vendue</label><input required type="number" min="1" step="1" name="quantite" value="${item?item.quantite:1}"></div>
-          <div class="field"><label>Prix de vente unitaire (FCFA)</label><input required type="number" min="0" name="prixUnitaire" value="${item?item.prixUnitaire:(state.products[0]?state.products[0].prixVente:0)}"></div>
+          <div class="field"><label>Prix de vente unitaire (FCFA)</label><input required type="number" min="0" name="prixUnitaire" value="${item?item.prixUnitaire:((mealProducts().find(m=>m.periode===serviceParDefaut())||{prixVente:0}).prixVente)}"></div>
           <div class="field"><label>Date de vente</label><input required type="date" name="date" value="${item?item.date:todayISO()}"></div>
           <div class="field"><label>Mode de paiement</label>
             <select name="paiement">
@@ -2994,7 +3008,7 @@ function openSaleForm(id){
     onMount(overlay){
       const sel = overlay.querySelector('[name="produitId"]');
       const prixInput = overlay.querySelector('[name="prixUnitaire"]');
-      sel.addEventListener('change', ()=>{ if(!item) prixInput.value = sel.selectedOptions[0].dataset.prix; });
+      sel.addEventListener('change', ()=>{ const pr = sel.selectedOptions[0] && sel.selectedOptions[0].dataset.prix; if(!item && pr) prixInput.value = pr; });
       overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
       overlay.querySelector('#saleForm').addEventListener('submit',(e)=>{
         e.preventDefault();
@@ -3003,7 +3017,7 @@ function openSaleForm(id){
         const quantite = Number(f.get('quantite')); const prixUnitaire = Number(f.get('prixUnitaire'));
         const payload = {
           produitId: produit.id, produitNom: produit.nom, quantite, prixUnitaire,
-          total: Math.round(quantite*prixUnitaire), date:f.get('date'), paiement:f.get('paiement'),
+          total: Math.round(quantite*prixUnitaire), date:f.get('date'), paiement:f.get('paiement'), service:produit.periode,
           table: f.get('table')? Number(f.get('table')) : null,
           commande: f.get('commande').trim() || (item? item.commande : 'C'+String(state.sales.length+1).padStart(3,'0')),
         };
@@ -3041,7 +3055,7 @@ function printSalesByDay(){
     const lignes = byDay[d].sort((a,b)=> a.produitNom.localeCompare(b.produitNom));
     const totalJour = lignes.reduce((s,v)=>s+v.total,0);
     const rows = lignes.map(v=>`<tr style="border-top:1px solid #EEF2EE;">
-      <td style="padding:5px 5px;font-size:12px;">${escapeHtml(v.produitNom)}</td>
+      <td style="padding:5px 5px;font-size:12px;">${escapeHtml(v.produitNom)}${v.service?`<div style="font-size:9.5px;color:#93A29B;">${escapeHtml(v.service)}</div>`:''}</td>
       <td style="padding:5px 5px;font-size:12px;text-align:right;">${fmt(v.quantite)}</td>
       <td style="padding:5px 5px;font-size:12px;text-align:right;">${fmt(v.prixUnitaire)}</td>
       <td style="padding:5px 5px;font-size:11px;">${escapeHtml(v.paiement)}</td>
@@ -5121,13 +5135,14 @@ function printSubscriptionCard(id){
 function printMenuDuJour(){
   const order = ['Petit-déjeuner','Déjeuner','Dîner','Toute la journée'];
   const byPeriode = {};
-  state.products.forEach(p=>{ const per = p.periode || 'Toute la journée'; (byPeriode[per]=byPeriode[per]||[]).push(p); });
+  const menuProducts = state.products.some(p=>p.repas) ? state.products.filter(p=>p.repas) : state.products;
+  menuProducts.forEach(p=>{ const per = p.periode || 'Toute la journée'; (byPeriode[per]=byPeriode[per]||[]).push(p); });
   const sections = order.filter(per=>byPeriode[per] && byPeriode[per].length).map(per=>{
     const byCat = {};
     byPeriode[per].forEach(p=>{ (byCat[p.categorie]=byCat[p.categorie]||[]).push(p); });
     const catBlocks = Object.keys(byCat).sort().map(cat=>`
         <div style="margin-bottom:10px;">
-          <div style="font-size:11px;font-weight:700;color:#B67A1B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">${escapeHtml(cat)}</div>
+          ${cat==='Repas' ? '' : `<div style="font-size:11px;font-weight:700;color:#B67A1B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">${escapeHtml(cat)}</div>`}
           ${byCat[cat].map(p=>`<div style="display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0;">
             <span>${escapeHtml(p.nom)}</span><span style="font-weight:700;">${fmt(p.prixVente)} FCFA</span>
           </div>`).join('')}
@@ -5691,7 +5706,7 @@ function renderRapports(){
 
   // Dépenses par catégorie
   const byCat = {};
-  state.expenses.forEach(e=>{ byCat[e.categorie]=(byCat[e.categorie]||0)+e.montant; });
+  allExpenses().forEach(e=>{ byCat[e.categorie]=(byCat[e.categorie]||0)+e.montant; });
   drawChart('chartDepensesCat', {
     type:'pie',
     data:{ labels:Object.keys(byCat), datasets:[{ data:Object.values(byCat), backgroundColor:PALETTE, borderWidth:2, borderColor:'#fff' }] },
@@ -5721,7 +5736,7 @@ function downloadCSV(content, filename){
 }
 function exportVentesCSV(){
   const csv = toCSV(state.sales, [
-    {label:'Date', key:'date'}, {label:'Commande', key:'commande'}, {label:'Produit', key:'produitNom'},
+    {label:'Date', key:'date'}, {label:'Repas', key:'service'}, {label:'Commande', key:'commande'}, {label:'Produit', key:'produitNom'},
     {label:'Quantité', key:'quantite'}, {label:'Prix unitaire', key:'prixUnitaire'}, {label:'Total', key:'total'}, {label:'Paiement', key:'paiement'},
   ]);
   downloadCSV(csv, 'ventes.csv'); toast('Export CSV des ventes téléchargé');
@@ -5973,7 +5988,6 @@ async function init(){
   $$('.nav-btn').forEach(btn => btn.addEventListener('click', ()=> goTo(btn.dataset.target)));
 
   // Menu / Plats
-  $('#btnAddProduct').addEventListener('click', ()=>openProductForm());
   $('#menuSearch').addEventListener('input', debounce((e)=>{ menuFilter.q=e.target.value; renderMenu(); }));
   $('#menuPeriodeFilter').addEventListener('change', (e)=>{ menuFilter.periode=e.target.value; renderMenu(); });
 
@@ -5984,6 +5998,8 @@ async function init(){
   $('#btnAddExpense').addEventListener('click', ()=>openExpenseForm());
   $('#achatsSearch').addEventListener('input', debounce((e)=>{ achatsFilter.q=e.target.value; renderAchats(); }));
   $('#achatsCatFilter').addEventListener('change', (e)=>{ achatsFilter.cat=e.target.value; renderAchatsTable(); });
+  $('#achatsServiceFilter').addEventListener('change', (e)=>{ achatsFilter.service=e.target.value; renderAchatsTable(); });
+  $('#achatsServices').addEventListener('click', (e)=>{ const c=e.target.closest('[data-service]'); if(!c) return; achatsFilter.service = achatsFilter.service===c.dataset.service ? '' : c.dataset.service; renderAchatsTable(); });
   $('#depensesSearch').addEventListener('input', debounce((e)=>{ achatsFilter.q=e.target.value; renderDepensesTable(); }));
   $('#btnWipeAchats').addEventListener('click', ()=>wipeModule('purchases','Achats'));
   $('#btnWipeDepenses').addEventListener('click', ()=>wipeModule('expenses','Dépenses'));
@@ -5997,6 +6013,8 @@ async function init(){
   $('#btnPrintSalesByDay').addEventListener('click', printSalesByDay);
   $('#ventesSearch').addEventListener('input', debounce((e)=>{ ventesFilter.q=e.target.value; renderVentes(); }));
   $('#ventesPaiementFilter').addEventListener('change', (e)=>{ ventesFilter.paiement=e.target.value; renderVentes(); });
+  $('#ventesServiceFilter').addEventListener('change', (e)=>{ ventesFilter.service=e.target.value; renderVentes(); });
+  $('#ventesServices').addEventListener('click', (e)=>{ const c=e.target.closest('[data-service]'); if(!c) return; ventesFilter.service = ventesFilter.service===c.dataset.service ? '' : c.dataset.service; renderVentes(); });
   $('#btnWipeVentes').addEventListener('click', ()=>wipeModule('sales','Ventes'));
   $('#btnExportVentes').addEventListener('click', exportVentesCSV);
 
@@ -6072,7 +6090,6 @@ async function init(){
   $('#statsAchatsDate').addEventListener('change', renderStatsAchatsRanking);
 
   // Top/Flop tabs (dashboard)
-  $('#topFlopTabs').addEventListener('click', (e)=>{ const b=e.target.closest('button'); if(!b) return; renderTopFlopChart(b.dataset.mode); });
   $('#btnDailyReport').addEventListener('click', openDailyReportModal);
   $('#vaTabs').addEventListener('click', (e)=>{ const b=e.target.closest('button[data-g]'); if(!b) return; vaGranularity=b.dataset.g; renderVentesAchatsCombine(); });
 
