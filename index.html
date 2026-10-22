@@ -522,6 +522,15 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
               <div id="vaSummary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px;"></div>
             </div>
           </div>
+          <div class="panel full" data-roles="admin">
+            <div class="panel-head">
+              <div><h3>Dépenses par jour &amp; par semaine</h3><div class="desc">Dépenses saisies + prises fournisseurs à crédit (comptées à la date de la prise)</div></div>
+            </div>
+            <div class="panel-body">
+              <div id="depSummary" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;"></div>
+              <div id="depTables" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;"></div>
+            </div>
+          </div>
           <div class="panel" data-roles="cashier">
             <div class="panel-head">
               <div><h3>Évolution des ventes</h3><div class="desc">Chiffre d'affaires par jour</div></div>
@@ -624,6 +633,11 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
 
         <div id="depensesBlock" style="display:none;">
           <div class="toolbar">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="expShiftMonth(-1)">◀</button>
+              <b id="depensesMoisLabel" style="min-width:140px;text-align:center;"></b>
+              <button class="btn btn-ghost btn-sm" onclick="expShiftMonth(1)">▶</button>
+            </div>
             <div class="search-box"><span class="ic">🔎</span><input id="depensesSearch" placeholder="Rechercher une dépense…"></div>
             <span class="pill pill-neutral" id="depensesTotalTag"></span>
             <div class="spacer"></div>
@@ -685,7 +699,7 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>Date</th><th>Repas</th><th>Commande</th><th>Produit</th><th>Qté</th><th>Prix unit.</th><th>Total</th><th>Paiement</th><th></th></tr></thead>
+            <thead><tr><th>Date</th><th>Repas</th><th>Commande</th><th>Produit</th><th>Nb de ventes</th><th>Vente globale</th><th>Paiement</th><th></th></tr></thead>
             <tbody id="ventesTbody"></tbody>
           </table>
         </div>
@@ -734,6 +748,11 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
             <button class="btn btn-primary" id="btnAddEmployee">➕ Ajouter un employé</button>
           </div>
         </div>
+        <div class="tabs-mini" id="employesTabs" style="margin-bottom:14px;width:fit-content;">
+          <button data-tab="liste" class="active">👥 Employés</button>
+          <button data-tab="inventaire">📋 Planning inventaire</button>
+        </div>
+        <div id="employesListBlock">
         <div class="toolbar">
           <div class="search-box"><span class="ic">🔎</span><input id="employesSearch" placeholder="Rechercher un nom ou un poste…"></div>
           <select class="select-filter" id="employesStatutFilter">
@@ -749,6 +768,8 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
             <tbody id="employesTbody"></tbody>
           </table>
         </div>
+        </div>
+        <div id="inventaireBlock" style="display:none;"></div>
       </section>
 
       <!-- ================= RECRUTEMENT ================= -->
@@ -920,12 +941,16 @@ footer.appfoot{padding:24px 32px 40px;color:var(--ink-faint);font-size:11.5px;}
       <section class="page" id="page-rapports">
         <div class="section-head">
           <div><div class="eyebrow">Analyse</div><h2>Rapports et statistiques</h2></div>
-          <div class="section-actions"><button class="btn btn-ghost" id="btnExportRapport">⬇️ Exporter le rapport global (CSV)</button></div>
+          <div class="section-actions">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);">Mois affiché <input type="month" id="rapportMois" class="select-filter" style="padding:9px 10px;"></label>
+            <button class="btn btn-ghost" id="btnExportRapport">⬇️ Exporter le rapport du mois (CSV)</button>
+          </div>
         </div>
+        <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;line-height:1.5;">Les chiffres sont calculés <b>mois par mois</b> : les dépenses et les prises fournisseurs d'un mois ne sont jamais comptées dans un autre mois.</p>
         <div class="kpi-grid" id="rapportKpis" style="grid-template-columns:repeat(3,1fr);"></div>
         <div class="charts-grid">
           <div class="panel">
-            <div class="panel-head"><h3>Dépenses par catégorie</h3></div>
+            <div class="panel-head"><div><h3>Dépenses par catégorie</h3><div class="desc">Mois affiché uniquement (prises fournisseurs comprises)</div></div></div>
             <div class="panel-body"><div class="chart-wrap"><canvas id="chartDepensesCat"></canvas></div></div>
           </div>
           <div class="panel">
@@ -1307,6 +1332,7 @@ function seedState(){
       {id:uid('SUPT'), supplierId: demoSupplierId, date:'2026-08-25', type:'paiement', description:'Règlement partiel', montant:20000, mode:'Espèces', auteur:'Administrateur Principal'},
     ],
     shoppingLists: { 'sl-principal': [] },
+    inventoryPlan: [], // planning d'inventaire : un employé par jour [{id,date,employeeId,done,doneDate,note}]
     teams: [],
   };
 }
@@ -1523,6 +1549,18 @@ function last7Days(){
   const today = new Date(); today.setHours(0,0,0,0);
   for(let i=6;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); days.push(d.toISOString().slice(0,10)); }
   return days;
+}
+/* Synthèse d'UN mois : les dépenses et prises fournisseurs d'un mois n'entrent jamais dans un autre mois. */
+function monthSummary(mKey){
+  const ca = monthlyVentesTotal(mKey);
+  const achats = state.purchases.filter(p=>monthKey(p.date)===mKey).reduce((a,p)=>a+p.total,0);
+  const exps = allExpenses().filter(e=>monthKey(e.date)===mKey);
+  const depExpl = exps.filter(e=>e.type!=='Investissement').reduce((a,e)=>a+e.montant,0);
+  const prises = exps.filter(e=>e.source==='fournisseur').reduce((a,e)=>a+e.montant,0);
+  const depInv = exps.filter(e=>e.type==='Investissement').reduce((a,e)=>a+e.montant,0);
+  const salaires = state.salaryPayments.filter(p=>monthKey(p.date)===mKey).reduce((a,p)=>a+p.montant,0);
+  const marge = ca - achats - depExpl - salaires;
+  return { mKey, ca, achats, depExpl, prises, depInv, salaires, marge, resultat: marge - depInv, pct: ca ? Math.round(marge/ca*1000)/10 : null, nbDep: exps.length };
 }
 function monthlyVentesTotal(mKey){ return state.sales.filter(s=>monthKey(s.date)===mKey).reduce((s,v)=>s+v.total,0); }
 function monthlyExpensesTotal(mKey){
@@ -1884,10 +1922,54 @@ function renderVentesAchatsCombine(){
     cell('Achats ÷ Ventes', ratio===null?'—':ratio+' %', ratio!==null&&ratio>100?'var(--bissap-dark)':'var(--ink)', ratio!==null&&ratio>100?'achats supérieurs aux ventes':'part des ventes dépensée en achats');
 }
 
+/* ---- Dépenses par jour et par semaine (tableau de bord) : dépenses saisies + prises fournisseurs ---- */
+function sumDepenses(fromISO, toISO){
+  return allExpenses().filter(e=>e.date>=fromISO && e.date<=toISO).reduce((a,e)=>a+e.montant, 0);
+}
+function computeDepensesSeries(g){
+  const saisies = {}, prises = {};
+  state.expenses.forEach(e=>{ const k=vaBucketKey(e.date,g); saisies[k]=(saisies[k]||0)+e.montant; });
+  supplierPrisesAsExpenses().forEach(e=>{ const k=vaBucketKey(e.date,g); prises[k]=(prises[k]||0)+e.montant; });
+  const nb = g==='jour' ? 14 : 8;
+  const keys = [vaBucketKey(todayISO(), g)];
+  for(let i=1;i<nb;i++) keys.unshift(addDaysISO(keys[0], g==='semaine' ? -7 : -1));
+  return { keys, saisies: keys.map(k=>saisies[k]||0), prises: keys.map(k=>prises[k]||0) };
+}
+function renderDepensesDashboard(){
+  const box = document.getElementById('depTables');
+  if(!box) return;
+  const t = todayISO(), hier = addDaysISO(t,-1);
+  const lundi = vaBucketKey(t,'semaine');
+  const cell = (label, value, note)=>`<div style="background:var(--line-soft);border-radius:10px;padding:10px 12px;"><div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);">${label}</div><div class="mono" style="font-size:19px;font-weight:700;color:var(--bissap-dark);">${value}</div><div style="font-size:10.5px;color:var(--ink-soft);">${note}</div></div>`;
+  document.getElementById('depSummary').innerHTML =
+    cell("Dépenses d'aujourd'hui", fcfa(sumDepenses(t,t)), 'Hier : ' + fcfa(sumDepenses(hier,hier))) +
+    cell('Dépenses de la semaine', fcfa(sumDepenses(lundi,t)), 'Depuis le lundi ' + fmtDate(lundi) + ' — semaine précédente (complète) : ' + fcfa(sumDepenses(addDaysISO(lundi,-7), addDaysISO(lundi,-1))));
+  // Tableaux de chiffres (le plus récent en premier)
+  const num = v => v ? fmt(v) : '<span style="color:var(--ink-faint);">—</span>';
+  const table = (titre, g, libelle, courant)=>{
+    const { keys, saisies, prises } = computeDepensesSeries(g);
+    const idx = keys.map((k,i)=>i).reverse();
+    const tot = (i)=> saisies[i] + prises[i];
+    const totSaisies = saisies.reduce((a,b)=>a+b,0), totPrises = prises.reduce((a,b)=>a+b,0);
+    return `<div>
+      <div style="font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;">${titre}</div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>${libelle}</th><th style="text-align:right;">Saisies</th><th style="text-align:right;">Prises crédit</th><th style="text-align:right;">Total</th></tr></thead>
+        <tbody>${idx.map(i=>`<tr style="${keys[i]===courant?'background:var(--leaf-tint);':''}">
+          <td><b>${g==='jour' ? fmtDate(keys[i]) : 'Sem. du ' + fmtDate(keys[i])}</b>${keys[i]===courant?' <span class="pill pill-ok">'+(g==='jour'?"Aujourd'hui":'En cours')+'</span>':''}${g==='jour'?`<div style="font-size:10.5px;color:var(--ink-soft);text-transform:capitalize;">${dayName(keys[i])}</div>`:''}</td>
+          <td class="num">${num(saisies[i])}</td><td class="num">${num(prises[i])}</td><td class="num"><b>${tot(i)?fmt(tot(i)):'—'}</b></td></tr>`).join('')}
+          <tr style="background:var(--line-soft);font-weight:700;"><td>Total ${g==='jour'?'14 jours':'8 semaines'}</td><td class="num">${fmt(totSaisies)}</td><td class="num">${fmt(totPrises)}</td><td class="num">${fcfa(totSaisies+totPrises)}</td></tr>
+        </tbody>
+      </table></div>
+    </div>`;
+  };
+  box.innerHTML = table('Par jour — 14 derniers jours', 'jour', 'Date', t) + table('Par semaine — 8 dernières semaines', 'semaine', 'Semaine', lundi);
+}
+
 function renderDashboard(){
   const t = computeTotals();
   const admin = isAdmin();
-  if(admin){ renderRealite(); renderVentesAchatsCombine(); } // panneaux financiers réservés à l'admin
+  if(admin){ renderRealite(); renderVentesAchatsCombine(); renderDepensesDashboard(); } // panneaux financiers réservés à l'admin
   // Tableau de bord simplifié : l'essentiel du jour. Les totaux détaillés (achats, dépenses, masse salariale,
   // clients du mois, etc.) restent disponibles dans la page Rapports.
   const pctMarge = t.caMois ? Math.round(t.margeExploitation / t.caMois * 1000) / 10 : null;
@@ -2486,12 +2568,21 @@ function renderAchatsTable(){
     </tr>`).join('') : `<tr class="empty-row"><td colspan="8">Aucun achat trouvé.</td></tr>`;
 }
 
+/* Les dépenses (prises fournisseurs comprises) sont comptées MOIS PAR MOIS : on navigue de mois en mois,
+   et la somme affichée ne contient que le mois choisi. */
+let expMonth = todayISO().slice(0,7);
+function expShiftMonth(delta){
+  const [y,m] = expMonth.split('-').map(Number); const d = new Date(y, m-1+delta, 1);
+  expMonth = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); renderDepensesTable();
+}
 function renderDepensesTable(){
   const q = achatsFilter.q.toLowerCase();
-  let rows = allExpenses().filter(e => !q || (e.categorie+e.description).toLowerCase().includes(q))
+  $('#depensesMoisLabel').textContent = monthTitle(expMonth);
+  let rows = allExpenses().filter(e => monthKey(e.date)===expMonth && (!q || (e.categorie+e.description).toLowerCase().includes(q)))
     .sort((a,b)=> b.date.localeCompare(a.date));
   const total = rows.reduce((a,e)=>a+e.montant,0);
-  $('#depensesTotalTag').textContent = fcfa(total) + ' • ' + rows.length + ' dépense(s)';
+  const prisesMois = rows.filter(e=>e.source==='fournisseur').reduce((a,e)=>a+e.montant,0);
+  $('#depensesTotalTag').textContent = fcfa(total) + ' • ' + rows.length + ' dépense(s)' + (prisesMois ? ' • dont ' + fcfa(prisesMois) + ' de prises fournisseurs' : '');
   $('#depensesTbody').innerHTML = rows.length ? rows.map(e => `
     <tr>
       <td>${fmtDate(e.date)}</td>
@@ -2505,7 +2596,7 @@ function renderDepensesTable(){
           : `<button class="icon-btn" title="Modifier" onclick="openExpenseForm('${e.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteExpense('${e.id}')">🗑️</button>`}
       </div></td>
-    </tr>`).join('') : `<tr class="empty-row"><td colspan="6">Aucune dépense trouvée.</td></tr>`;
+    </tr>`).join('') : `<tr class="empty-row"><td colspan="6">Aucune dépense pour ce mois.</td></tr>`;
 }
 
 function fmtDate(d){ if(!d) return '—'; return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}); }
@@ -2959,14 +3050,13 @@ function renderVentes(){
       <td>${escapeHtml(s.commande||'—')}${s.table?` <span class="pill pill-neutral">Table ${s.table}</span>`:''}</td>
       <td class="name-cell"><b>${escapeHtml(s.produitNom)}</b></td>
       <td class="num">${fmt(s.quantite)}</td>
-      <td class="num">${fmt(s.prixUnitaire)}</td>
       <td class="num"><b>${fmt(s.total)}</b></td>
       <td><span class="pill pill-gold">${escapeHtml(s.paiement)}</span></td>
       <td class="actions"><div class="row-actions">
         <button class="icon-btn" title="Modifier" onclick="openSaleForm('${s.id}')">✏️</button>
         <button class="icon-btn danger" title="Supprimer" onclick="deleteSale('${s.id}')">🗑️</button>
       </div></td>
-    </tr>`).join('') : `<tr class="empty-row"><td colspan="9">Aucune vente trouvée.</td></tr>`;
+    </tr>`).join('') : `<tr class="empty-row"><td colspan="8">Aucune vente trouvée.</td></tr>`;
 }
 
 function mealProducts(){ return SERVICES.map(sv=>state.products.find(p=>p.repas && p.periode===sv.id)).filter(Boolean); }
@@ -2989,8 +3079,8 @@ function openSaleForm(id){
       <form id="saleForm">
         <div class="form-grid">
           <div class="field full"><label>Repas</label><select required name="produitId">${mealOptions(item)}</select></div>
-          <div class="field"><label>Quantité vendue</label><input required type="number" min="1" step="1" name="quantite" value="${item?item.quantite:1}"></div>
-          <div class="field"><label>Prix de vente unitaire (FCFA)</label><input required type="number" min="0" name="prixUnitaire" value="${item?item.prixUnitaire:((mealProducts().find(m=>m.periode===serviceParDefaut())||{prixVente:0}).prixVente)}"></div>
+          <div class="field"><label>Nombre de ventes</label><input required type="number" min="1" step="1" name="quantite" value="${item?item.quantite:1}"></div>
+          <div class="field"><label>Vente globale (FCFA) <span class="hint">(montant total)</span></label><input required type="number" min="0" name="total" value="${item?item.total:Math.round(1*((mealProducts().find(m=>m.periode===serviceParDefaut())||{prixVente:0}).prixVente))}"></div>
           <div class="field"><label>Date de vente</label><input required type="date" name="date" value="${item?item.date:todayISO()}"></div>
           <div class="field"><label>Mode de paiement</label>
             <select name="paiement">
@@ -3007,17 +3097,23 @@ function openSaleForm(id){
       </form>`,
     onMount(overlay){
       const sel = overlay.querySelector('[name="produitId"]');
-      const prixInput = overlay.querySelector('[name="prixUnitaire"]');
-      sel.addEventListener('change', ()=>{ const pr = sel.selectedOptions[0] && sel.selectedOptions[0].dataset.prix; if(!item && pr) prixInput.value = pr; });
+      // La vente globale est proposée = nombre de ventes × prix du repas, tant qu'on ne l'a pas saisie soi-même
+      const qteInput = overlay.querySelector('[name="quantite"]');
+      const totalInput = overlay.querySelector('[name="total"]');
+      let totalSaisi = !!item;
+      const suggerer = ()=>{ if(totalSaisi) return; const pr = Number(sel.selectedOptions[0] && sel.selectedOptions[0].dataset.prix) || 0; totalInput.value = Math.round((Number(qteInput.value)||0) * pr); };
+      sel.addEventListener('change', suggerer);
+      qteInput.addEventListener('input', suggerer);
+      totalInput.addEventListener('input', ()=>{ totalSaisi = true; });
       overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
       overlay.querySelector('#saleForm').addEventListener('submit',(e)=>{
         e.preventDefault();
         const f = new FormData(e.target);
         const produit = state.products.find(p=>p.id===f.get('produitId'));
-        const quantite = Number(f.get('quantite')); const prixUnitaire = Number(f.get('prixUnitaire'));
+        const quantite = Number(f.get('quantite')); const total = Math.round(Number(f.get('total')) || 0);
         const payload = {
-          produitId: produit.id, produitNom: produit.nom, quantite, prixUnitaire,
-          total: Math.round(quantite*prixUnitaire), date:f.get('date'), paiement:f.get('paiement'), service:produit.periode,
+          produitId: produit.id, produitNom: produit.nom, quantite, prixUnitaire: quantite ? Math.round(total/quantite*100)/100 : total,
+          total, date:f.get('date'), paiement:f.get('paiement'), service:produit.periode,
           table: f.get('table')? Number(f.get('table')) : null,
           commande: f.get('commande').trim() || (item? item.commande : 'C'+String(state.sales.length+1).padStart(3,'0')),
         };
@@ -3057,7 +3153,6 @@ function printSalesByDay(){
     const rows = lignes.map(v=>`<tr style="border-top:1px solid #EEF2EE;">
       <td style="padding:5px 5px;font-size:12px;">${escapeHtml(v.produitNom)}${v.service?`<div style="font-size:9.5px;color:#93A29B;">${escapeHtml(v.service)}</div>`:''}</td>
       <td style="padding:5px 5px;font-size:12px;text-align:right;">${fmt(v.quantite)}</td>
-      <td style="padding:5px 5px;font-size:12px;text-align:right;">${fmt(v.prixUnitaire)}</td>
       <td style="padding:5px 5px;font-size:11px;">${escapeHtml(v.paiement)}</td>
       <td style="padding:5px 5px;font-size:12px;text-align:right;font-weight:700;">${fmt(v.total)}</td>
     </tr>`).join('');
@@ -3069,10 +3164,9 @@ function printSalesByDay(){
       <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="background:#F3F6F3;">
           <th style="text-align:left;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Produit</th>
-          <th style="text-align:right;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Qté</th>
-          <th style="text-align:right;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">P.U.</th>
+          <th style="text-align:right;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Nb ventes</th>
           <th style="text-align:left;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Paiement</th>
-          <th style="text-align:right;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Total</th>
+          <th style="text-align:right;padding:5px;font-size:9.5px;text-transform:uppercase;color:#5C6E67;">Vente globale</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -3502,6 +3596,7 @@ function employeeAvatarHtml(e, size=40){
 }
 
 function renderEmployes(){
+  applyEmployesTab();
   const q = employesFilter.q.toLowerCase();
   let rows = state.employees.filter(e => (!q || (e.nom+e.poste).toLowerCase().includes(q)) && (!employesFilter.statut || e.statut===employesFilter.statut))
     .sort((a,b)=> a.nom.localeCompare(b.nom));
@@ -3639,6 +3734,7 @@ function viewEmployee(id){
       <div>Ancienneté : <b>${anciennete(e.dateEmbauche)}</b> <span style="color:var(--ink-soft);font-size:11.5px;">(${ancienneteJours(e.dateEmbauche)} jours)</span></div>
       <div>Repos : ${restBadgeHtml(e.reposSlot)}</div>
       <div>Statut : ${employeeStatutBadge(e)}</div>
+      ${(()=>{ const prochains = invPlan().filter(x=>x.employeeId===e.id && x.date>=todayISO() && !x.done).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,4); return prochains.length ? `<div>📋 Prochains inventaires : <b>${prochains.map(x=>fmtDate(x.date)).join(' • ')}</b></div>` : ''; })()}
       <div>Performance moyenne : <b class="mono">${perf}/100</b> <span style="color:var(--ink-soft);font-size:11.5px;">(${evals.length} évaluation${evals.length>1?'s':''})</span></div>
       ${admin?`<div style="border-top:1px solid var(--line-soft);padding-top:10px;">Salaire de base mensuel : <b class="mono" style="font-size:16px;">${fcfa(e.salaire)}</b></div>
       <div>Prime d'ancienneté : <b class="mono">${fmt(primeAncienneteMontant())} F</b> <span style="color:var(--ink-soft);font-size:11px;">(montant fixe, identique pour tous)</span></div>
@@ -3820,6 +3916,231 @@ function restBadgeHtml(slot){
   return `<span class="pill ${resting?'pill-warn':'pill-neutral'}" title="Groupe ${r.label} — Jour ${r.start} → Jour ${r.end} du cycle">
     ${resting?'🛌 En repos':'Groupe '+r.label} <span style="opacity:.7;">(${fmtDateObj(restStart)}→${fmtDateObj(restEnd)})</span>
   </span>`;
+}
+
+/* ========================================================
+   PLANNING D'INVENTAIRE — un employé responsable de l'inventaire chaque jour, rotation équitable
+   ======================================================== */
+let employesTab = 'liste';
+let invMonth = todayISO().slice(0,7);
+let invViewEmp = '';
+function invPlan(){ return state.inventoryPlan || (state.inventoryPlan = []); }
+function invEntry(date){ return invPlan().find(x=>x.date===date); }
+function monthDates(m){ const [y,mo] = m.split('-').map(Number); const n = new Date(y, mo, 0).getDate(); return Array.from({length:n}, (_,i)=> m + '-' + String(i+1).padStart(2,'0')); }
+function monthTitle(m){ const [y,mo] = m.split('-').map(Number); const t = new Date(y, mo-1, 1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'}); return t.charAt(0).toUpperCase()+t.slice(1); }
+function dayName(dateISO){ return parseDate(dateISO).toLocaleDateString('fr-FR',{weekday:'long'}); }
+function isOnRestOn(slot, dateISO){
+  const cycleStart = parseDate(state.settings.congeCycleStart || '2026-08-01');
+  const cycleDays = restCycleDays();
+  const diff = Math.floor((parseDate(dateISO) - cycleStart) / 86400000);
+  const pos = ((diff % cycleDays) + cycleDays) % cycleDays;
+  return pos >= (slot-1)*7 && pos <= (slot-1)*7 + 6;
+}
+/* Raison pour laquelle un employé ne peut pas faire l'inventaire un jour donné ('' = disponible) */
+function unavailableReason(e, dateISO){
+  if(e.statut==='Inactif') return 'inactif';
+  if(e.statut==='Fin de contrat' && (!e.dateFinContrat || dateISO >= e.dateFinContrat)) return 'fin de contrat';
+  if(e.dateEmbauche && dateISO < e.dateEmbauche) return 'pas encore embauché';
+  if((e.pauses||[]).some(p=> p.debut <= dateISO && (!p.fin || dateISO < p.fin))) return 'en pause';
+  if(e.reposSlot && isOnRestOn(Number(e.reposSlot), dateISO)) return 'en repos';
+  return '';
+}
+function employeeAvailableOn(e, dateISO){ return !unavailableReason(e, dateISO); }
+
+/* Génère un planning : chaque jour, parmi les employés disponibles (ni en pause, ni en repos, ni inactifs),
+   on choisit celui qui a le moins d'inventaires dans le mois, et à égalité celui qui en a fait un le moins récemment.
+   Les jours déjà marqués « fait » sont conservés. */
+function generateInventoryPlan({ month, fromDate, employeeIds }){
+  const pool = state.employees.filter(e=>employeeIds.includes(e.id));
+  const days = monthDates(month);
+  const plan = invPlan();
+  // on retire les jours non faits à partir de la date de départ
+  state.inventoryPlan = plan.filter(x => !(x.date >= fromDate && x.date.startsWith(month) && !x.done));
+  const counts = {}, last = {};
+  pool.forEach(e=>{ counts[e.id]=0; last[e.id]=''; });
+  state.inventoryPlan.filter(x=>x.date.startsWith(month)).forEach(x=>{ if(counts[x.employeeId]!==undefined) counts[x.employeeId]++; });
+  state.inventoryPlan.forEach(x=>{ if(last[x.employeeId]!==undefined && x.date > last[x.employeeId] && x.date < fromDate) last[x.employeeId] = x.date; });
+  let assigned = 0, vides = [];
+  days.filter(d=>d>=fromDate).forEach(d=>{
+    if(state.inventoryPlan.some(x=>x.date===d)) return; // jour déjà fait (conservé)
+    const dispo = pool.filter(e=>employeeAvailableOn(e,d));
+    if(!dispo.length){ vides.push(d); return; }
+    dispo.sort((a,b)=> counts[a.id]-counts[b.id] || (last[a.id]||'').localeCompare(last[b.id]||'') || a.nom.localeCompare(b.nom));
+    const choisi = dispo[0];
+    state.inventoryPlan.push({ id:uid('INV'), date:d, employeeId:choisi.id, done:false, doneDate:null, note:'' });
+    counts[choisi.id]++; last[choisi.id] = d; assigned++;
+  });
+  persist();
+  return { assigned, vides };
+}
+
+function renderInventairePlan(){
+  const box = document.getElementById('inventaireBlock');
+  if(!box) return;
+  const admin = isAdmin();
+  const dates = monthDates(invMonth);
+  const today = todayISO();
+  const empById = id => state.employees.find(e=>e.id===id);
+  const entries = invPlan().filter(x=>x.date.startsWith(invMonth));
+  // répartition du mois
+  const counts = {};
+  entries.forEach(x=>{ (counts[x.employeeId] = counts[x.employeeId] || {n:0, fait:0}).n++; if(x.done) counts[x.employeeId].fait++; });
+  const chips = Object.keys(counts).map(id=>{ const e = empById(id); return `<span class="pill pill-neutral" style="font-size:11.5px;">${e?escapeHtml(e.nom):'(supprimé)'} : <b>${counts[id].n}</b> jour(s)${counts[id].fait?` · ${counts[id].fait} fait(s)`:''}</span>`; }).join(' ');
+  const selectable = state.employees.filter(e=>e.statut==='Actif').sort((a,b)=>a.nom.localeCompare(b.nom));
+  const rows = dates.filter(d => !invViewEmp || (invEntry(d) && invEntry(d).employeeId===invViewEmp)).map(d=>{
+    const en = invEntry(d); const e = en ? empById(en.employeeId) : null;
+    const raison = e ? unavailableReason(e, d) : '';
+    const passe = d < today;
+    let statut = '<span style="color:var(--ink-faint);">—</span>';
+    if(en) statut = en.done ? `<span class="pill pill-ok">✅ Fait${en.doneDate?' le '+fmtDate(en.doneDate):''}</span>` : (passe ? '<span class="pill pill-danger">⚠️ Non fait</span>' : '<span class="pill pill-gold">⏳ À faire</span>');
+    const opts = selectable.map(x=>`<option value="${x.id}" ${en&&en.employeeId===x.id?'selected':''}>${escapeHtml(x.nom)}</option>`).join('')
+      + (en && !selectable.some(x=>x.id===en.employeeId) ? `<option value="${en.employeeId}" selected>${e?escapeHtml(e.nom):'(employé supprimé)'}</option>` : '');
+    const qui = admin
+      ? `<select class="select-filter" style="min-width:160px;" onchange="invSetAssignee('${d}', this.value)"><option value="">— non assigné —</option>${opts}</select>`
+      : (e ? `<div style="display:flex;align-items:center;gap:8px;">${employeeAvatarHtml(e,28)}<b>${escapeHtml(e.nom)}</b></div>` : '<span style="color:var(--ink-faint);">— non assigné —</span>');
+    return `<tr style="${d===today?'background:var(--leaf-tint);':''}">
+      <td><b>${fmtDate(d)}</b>${d===today?' <span class="pill pill-ok">Aujourd\'hui</span>':''}</td>
+      <td style="text-transform:capitalize;">${dayName(d)}</td>
+      <td>${qui}${raison?`<div style="font-size:11px;color:var(--bissap-dark);margin-top:3px;">⚠️ ${escapeHtml(raison)} ce jour-là</div>`:''}</td>
+      <td>${statut}</td>
+      <td style="font-size:12px;color:var(--ink-soft);">${en&&en.note?escapeHtml(en.note):''}</td>
+      <td class="actions"><div class="row-actions">${en ? `
+        <button class="icon-btn" title="${en.done?'Marquer comme non fait':'Marquer l\'inventaire comme fait'}" onclick="invToggleDone('${d}')">${en.done?'↩️':'✅'}</button>
+        <button class="icon-btn" title="Ajouter une note" onclick="invEditNote('${d}')">💬</button>` : ''}</div></td>
+    </tr>`;
+  }).join('');
+  box.innerHTML = `
+    <div class="toolbar">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="btn btn-ghost btn-sm" onclick="invShiftMonth(-1)">◀</button>
+        <b style="min-width:150px;text-align:center;">${monthTitle(invMonth)}</b>
+        <button class="btn btn-ghost btn-sm" onclick="invShiftMonth(1)">▶</button>
+      </div>
+      <select class="select-filter" onchange="invViewEmp=this.value; renderInventairePlan()">
+        <option value="">Tous les employés</option>
+        ${state.employees.filter(e=>entries.some(x=>x.employeeId===e.id) || e.statut==='Actif').sort((a,b)=>a.nom.localeCompare(b.nom)).map(e=>`<option value="${e.id}" ${invViewEmp===e.id?'selected':''}>${escapeHtml(e.nom)}</option>`).join('')}
+      </select>
+      <span class="pill pill-neutral">${entries.length} jour(s) planifié(s) • ${entries.filter(x=>x.done).length} fait(s)</span>
+      <div class="spacer"></div>
+      <button class="btn btn-ghost" onclick="printInventoryPlan()">🖨️ Imprimer</button>
+      ${admin ? `<button class="btn btn-danger btn-sm" onclick="clearInventoryMonth()">🗑️ Vider le mois</button>
+      <button class="btn btn-primary" onclick="openInventoryGenerator()">⚡ Générer le planning</button>` : ''}
+    </div>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 10px;line-height:1.5;">Un employé responsable de l'inventaire chaque jour, en rotation équitable. Les employés en pause, en repos, inactifs ou en fin de contrat ne sont pas assignés.</p>
+    ${chips ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${chips}</div>` : ''}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Jour</th><th>Responsable de l'inventaire</th><th>Statut</th><th>Note</th><th></th></tr></thead>
+        <tbody>${rows || `<tr class="empty-row"><td colspan="6">Aucun jour pour ce filtre.</td></tr>`}</tbody>
+      </table>
+    </div>`;
+}
+function applyEmployesTab(){
+  const lb = document.getElementById('employesListBlock'), ib = document.getElementById('inventaireBlock');
+  if(!lb || !ib) return;
+  document.querySelectorAll('#employesTabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===employesTab));
+  lb.style.display = employesTab==='liste' ? '' : 'none';
+  ib.style.display = employesTab==='inventaire' ? '' : 'none';
+  if(employesTab==='inventaire') renderInventairePlan();
+}
+function invShiftMonth(delta){
+  const [y,m] = invMonth.split('-').map(Number); const d = new Date(y, m-1+delta, 1);
+  invMonth = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); renderInventairePlan();
+}
+function invSetAssignee(date, empId){
+  if(!isAdmin()) return;
+  const plan = invPlan(); const en = invEntry(date);
+  if(!empId){ if(en) state.inventoryPlan = plan.filter(x=>x.date!==date); }
+  else if(en){ en.employeeId = empId; en.done = false; en.doneDate = null; }
+  else plan.push({ id:uid('INV'), date, employeeId:empId, done:false, doneDate:null, note:'' });
+  persist(); renderInventairePlan();
+}
+function invToggleDone(date){
+  const en = invEntry(date); if(!en) return;
+  en.done = !en.done; en.doneDate = en.done ? todayISO() : null;
+  persist(); renderInventairePlan(); toast(en.done ? 'Inventaire marqué comme fait' : 'Inventaire remis à faire');
+}
+function invEditNote(date){
+  const en = invEntry(date); if(!en) return;
+  openModal({
+    title:'💬 Note — inventaire du ' + fmtDate(date), narrow:true,
+    bodyHtml:`<form id="invNoteForm"><div class="field full"><label>Note (écarts constatés, remarque…)</label><input name="note" value="${escapeHtml(en.note||'')}" autofocus></div>
+      <div class="form-actions"><button type="button" class="btn btn-ghost" data-cancel>Annuler</button><button type="submit" class="btn btn-primary">Enregistrer</button></div></form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#invNoteForm').addEventListener('submit',(ev)=>{ ev.preventDefault(); en.note = (new FormData(ev.target).get('note')||'').trim(); persist(); closeModal(); renderInventairePlan(); });
+    }
+  });
+}
+function clearInventoryMonth(){
+  const n = invPlan().filter(x=>x.date.startsWith(invMonth) && !x.done).length;
+  if(!n){ toast('Aucun jour à vider ce mois-ci'); return; }
+  confirmModal({ message:`Retirer les ${n} jour(s) non faits du planning de ${monthTitle(invMonth)} ? Les jours déjà marqués « fait » sont conservés.`,
+    onConfirm(){ state.inventoryPlan = invPlan().filter(x=>!(x.date.startsWith(invMonth) && !x.done)); persist(); renderInventairePlan(); toast('Planning du mois vidé'); } });
+}
+function openInventoryGenerator(){
+  const month = invMonth;
+  const today = todayISO();
+  const from = today.startsWith(month) ? today : month + '-01';
+  const actifs = state.employees.filter(e=>e.statut==='Actif').sort((a,b)=>a.nom.localeCompare(b.nom));
+  if(!actifs.length){ toast('Aucun employé actif à planifier', 'error'); return; }
+  openModal({
+    title:'⚡ Générer le planning d\'inventaire — ' + monthTitle(month),
+    bodyHtml:`
+      <p style="font-size:12px;color:var(--ink-soft);line-height:1.5;margin-bottom:10px;">Un employé par jour, en rotation équitable. Les jours déjà marqués « fait » sont conservés ; les autres jours à partir de la date choisie sont recalculés. Les employés en pause ou en repos un jour donné sont ignorés ce jour-là.</p>
+      <form id="invGenForm">
+        <div class="field full"><label>À partir du</label><input required type="date" name="from" min="${month}-01" max="${month}-${String(monthDates(month).length).padStart(2,'0')}" value="${from}"></div>
+        <div class="field full" style="margin-top:10px;"><label>Employés qui participent à l'inventaire</label>
+          <div style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:8px 10px;">
+            ${actifs.map(e=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" name="emp" value="${e.id}" checked> ${escapeHtml(e.nom)} <span style="color:var(--ink-soft);font-size:11.5px;">— ${escapeHtml(e.poste||'')}</span></label>`).join('')}
+          </div>
+        </div>
+        <div class="form-actions"><button type="button" class="btn btn-ghost" data-cancel>Annuler</button><button type="submit" class="btn btn-primary">⚡ Générer</button></div>
+      </form>`,
+    onMount(overlay){
+      overlay.querySelector('[data-cancel]').addEventListener('click', closeModal);
+      overlay.querySelector('#invGenForm').addEventListener('submit',(ev)=>{
+        ev.preventDefault();
+        const f = new FormData(ev.target);
+        const ids = f.getAll('emp');
+        if(!ids.length){ toast('Choisissez au moins un employé', 'error'); return; }
+        const res = generateInventoryPlan({ month, fromDate:f.get('from'), employeeIds:ids });
+        closeModal(); invViewEmp = ''; renderInventairePlan();
+        toast(res.assigned + ' jour(s) planifié(s)' + (res.vides.length ? ' — ' + res.vides.length + ' jour(s) sans employé disponible' : ''), res.vides.length ? 'error' : undefined);
+      });
+    }
+  });
+}
+function printInventoryPlan(){
+  const dates = monthDates(invMonth);
+  const emp = invViewEmp ? state.employees.find(e=>e.id===invViewEmp) : null;
+  const rows = dates.filter(d=>{ const en = invEntry(d); return emp ? (en && en.employeeId===emp.id) : true; }).map(d=>{
+    const en = invEntry(d); const e = en ? state.employees.find(x=>x.id===en.employeeId) : null;
+    return `<tr style="border-top:1px solid #EEF2EE;">
+      <td style="padding:5px 6px;font-size:12px;"><b>${fmtDate(d)}</b></td>
+      <td style="padding:5px 6px;font-size:12px;text-transform:capitalize;">${dayName(d)}</td>
+      <td style="padding:5px 6px;font-size:12px;">${e?escapeHtml(e.nom):'<span style="color:#93A29B;">—</span>'}</td>
+      <td style="padding:5px 6px;text-align:center;">${en&&en.done?'✅':'<span style="display:inline-block;width:14px;height:14px;border:2px solid #164F4C;border-radius:3px;"></span>'}</td>
+    </tr>`;
+  }).join('');
+  const counts = {}; invPlan().filter(x=>x.date.startsWith(invMonth)).forEach(x=>{ counts[x.employeeId]=(counts[x.employeeId]||0)+1; });
+  const resume = Object.keys(counts).map(id=>{ const e = state.employees.find(x=>x.id===id); return `${e?escapeHtml(e.nom):'—'} : ${counts[id]}`; }).join(' · ');
+  const title = 'Planning inventaire — ' + (emp ? emp.nom + ' — ' : '') + monthTitle(invMonth);
+  const body = `
+  <div style="width:440px;margin:0 auto;border-radius:20px;overflow:hidden;border:1px solid #E2E8E3;box-shadow:0 8px 24px rgba(0,0,0,.15);">
+    ${printBrandHeader('Planning d\'inventaire', 'linear-gradient(135deg,#0F3D3B,#164F4C)')}
+    <div style="padding:16px 18px;background:#fff;">
+      <div style="font-family:'Fraunces',serif;font-size:17px;font-weight:700;">${emp ? escapeHtml(emp.nom) + ' — ' : ''}${monthTitle(invMonth)}</div>
+      <div style="font-size:11px;color:#5C6E67;margin:2px 0 10px;">Un employé responsable de l'inventaire chaque jour. Cochez une fois l'inventaire terminé.</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:#F3F6F3;"><th style="text-align:left;padding:5px 6px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Date</th><th style="text-align:left;padding:5px 6px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Jour</th><th style="text-align:left;padding:5px 6px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Responsable</th><th style="padding:5px 6px;font-size:10px;text-transform:uppercase;color:#5C6E67;">Fait</th></tr></thead>
+        <tbody>${rows || '<tr><td colspan="4" style="padding:12px 6px;color:#93A29B;font-size:12px;">Aucun jour planifié.</td></tr>'}</tbody>
+      </table>
+      ${resume ? `<div style="margin-top:10px;font-size:11px;color:#5C6E67;">Répartition du mois — ${resume}</div>` : ''}
+    </div>
+    ${printBrandFooter()}
+  </div>`;
+  openPrintWindow(title, body);
 }
 
 /* ========================================================
@@ -5678,35 +5999,39 @@ function renderStatsAchatsRanking(){
     </tr>`).join('') : `<tr class="empty-row"><td colspan="5">Aucun achat sur cette période.</td></tr>`;
 }
 
+let rapportMois = todayISO().slice(0,7);
 function renderRapports(){
   const t = computeTotals();
+  const M = monthSummary(rapportMois);
+  const moisInput = $('#rapportMois'); if(moisInput) moisInput.value = rapportMois;
   $('#rapportKpis').innerHTML = [
-    ['Chiffre d\'affaires total', fcfa(t.salesTotal)],
-    ['Coût matières (achats)', fcfa(t.purchasesTotal)],
-    ['Dépenses d\'exploitation', fcfa(t.expensesExploitation)],
-    ['Masse salariale', fcfa(t.payroll)],
-    ['Marge d\'exploitation — mois en cours', fcfa(t.margeExploitation)],
-    ['Marge d\'exploitation du mois (% du CA du mois)', t.caMois? Math.round((t.margeExploitation/t.caMois)*1000)/10 + ' %' : '—'],
-    ['Marge d\'exploitation — cumul depuis le début', fcfa(t.margeExploitationCumul)],
-    ['Marge d\'exploitation cumulée (% du CA total)', t.salesTotal? Math.round((t.margeExploitationCumul/t.salesTotal)*1000)/10 + ' %' : '—'],
-    ['Investissements de démarrage', fcfa(t.expensesInvestissement)],
-    ['Résultat après investissements', fcfa(t.resultatApresInvestissements)],
+    ["Chiffre d'affaires — " + monthTitle(rapportMois), fcfa(M.ca)],
+    ['Coût matières (achats du mois)', fcfa(M.achats)],
+    ["Dépenses d'exploitation du mois", fcfa(M.depExpl)],
+    ['dont prises fournisseurs à crédit', fcfa(M.prises)],
+    ['Salaires versés du mois', fcfa(M.salaires)],
+    ["Marge d'exploitation du mois", fcfa(M.marge)],
+    ["Marge d'exploitation (% du CA du mois)", M.pct===null ? '—' : M.pct + ' %'],
+    ['Investissements de démarrage du mois', fcfa(M.depInv)],
+    ['Résultat après investissements du mois', fcfa(M.resultat)],
+    ["Cumul depuis le début — marge d'exploitation", fcfa(t.margeExploitationCumul)],
+    ['Cumul depuis le début — résultat après investissements', fcfa(t.resultatApresInvestissements)],
   ].map(([l,v])=>`<div class="kpi-card"><div class="kpi-label">${l}</div><div class="kpi-value" style="margin-top:8px;">${v}</div></div>`).join('');
 
   // Ventes par produit (table classement complet)
   const byProduct = {};
-  state.sales.forEach(s=>{ if(!byProduct[s.produitNom]) byProduct[s.produitNom]={qty:0,total:0}; byProduct[s.produitNom].qty+=Number(s.quantite); byProduct[s.produitNom].total+=s.total; });
+  state.sales.filter(s=>monthKey(s.date)===rapportMois).forEach(s=>{ if(!byProduct[s.produitNom]) byProduct[s.produitNom]={qty:0,total:0}; byProduct[s.produitNom].qty+=Number(s.quantite); byProduct[s.produitNom].total+=s.total; });
   const ranked = Object.entries(byProduct).sort((a,b)=>b[1].total-a[1].total);
   $('#rapportProduitsTbody').innerHTML = ranked.length ? ranked.map(([nom,v],i)=>`
     <tr><td class="num">${i+1}</td><td><b>${escapeHtml(nom)}</b></td><td class="num">${fmt(v.qty)}</td><td class="num"><b>${fmt(v.total)}</b></td></tr>
-  `).join('') : `<tr class="empty-row"><td colspan="4">Aucune donnée de vente.</td></tr>`;
+  `).join('') : `<tr class="empty-row"><td colspan="4">Aucune vente ce mois-ci.</td></tr>`;
 
   if(!$('#statsAchatsDate').value) $('#statsAchatsDate').value = todayISO();
   renderStatsAchatsRanking();
 
   // Dépenses par catégorie
   const byCat = {};
-  allExpenses().forEach(e=>{ byCat[e.categorie]=(byCat[e.categorie]||0)+e.montant; });
+  allExpenses().filter(e=>monthKey(e.date)===rapportMois).forEach(e=>{ byCat[e.categorie]=(byCat[e.categorie]||0)+e.montant; });
   drawChart('chartDepensesCat', {
     type:'pie',
     data:{ labels:Object.keys(byCat), datasets:[{ data:Object.values(byCat), backgroundColor:PALETTE, borderWidth:2, borderColor:'#fff' }] },
@@ -5715,7 +6040,7 @@ function renderRapports(){
 
   // Ventes par mode de paiement
   const byPay = {};
-  state.sales.forEach(s=>{ byPay[s.paiement]=(byPay[s.paiement]||0)+s.total; });
+  state.sales.filter(s=>monthKey(s.date)===rapportMois).forEach(s=>{ byPay[s.paiement]=(byPay[s.paiement]||0)+s.total; });
   drawChart('chartPaiements', {
     type:'doughnut',
     data:{ labels:Object.keys(byPay), datasets:[{ data:Object.values(byPay), backgroundColor:['#2F8F63','#DD9A2B','#2C6E9E','#C0273A'], borderWidth:2, borderColor:'#fff' }] },
@@ -5737,25 +6062,29 @@ function downloadCSV(content, filename){
 function exportVentesCSV(){
   const csv = toCSV(state.sales, [
     {label:'Date', key:'date'}, {label:'Repas', key:'service'}, {label:'Commande', key:'commande'}, {label:'Produit', key:'produitNom'},
-    {label:'Quantité', key:'quantite'}, {label:'Prix unitaire', key:'prixUnitaire'}, {label:'Total', key:'total'}, {label:'Paiement', key:'paiement'},
+    {label:'Nombre de ventes', key:'quantite'}, {label:'Vente globale', key:'total'}, {label:'Paiement', key:'paiement'},
   ]);
   downloadCSV(csv, 'ventes.csv'); toast('Export CSV des ventes téléchargé');
 }
 function exportRapportGlobalCSV(){
   const t = computeTotals();
+  const M = monthSummary(rapportMois);
   const lines = [
     ['Indicateur','Valeur (FCFA)'],
-    ["Chiffre d'affaires total", t.salesTotal],
-    ['Total achats', t.purchasesTotal],
-    ["Dépenses d'exploitation", t.expensesExploitation],
-    ['Masse salariale', t.payroll],
-    ["Marge d'exploitation — mois en cours", t.margeExploitation],
-    ["Marge d'exploitation — cumul depuis le début", t.margeExploitationCumul],
-    ['Investissements de démarrage', t.expensesInvestissement],
-    ['Résultat après investissements', t.resultatApresInvestissements],
+    ['Mois', rapportMois],
+    ["Chiffre d'affaires du mois", M.ca],
+    ['Achats du mois', M.achats],
+    ["Dépenses d'exploitation du mois", M.depExpl],
+    ['dont prises fournisseurs à crédit', M.prises],
+    ['Salaires versés du mois', M.salaires],
+    ["Marge d'exploitation du mois", M.marge],
+    ['Investissements de démarrage du mois', M.depInv],
+    ['Résultat après investissements du mois', M.resultat],
+    ["Cumul depuis le début — marge d'exploitation", t.margeExploitationCumul],
+    ['Cumul depuis le début — résultat après investissements', t.resultatApresInvestissements],
   ];
-  downloadCSV(lines.map(l=>l.join(',')).join('\n'), 'rapport_global.csv');
-  toast('Rapport global exporté');
+  downloadCSV(lines.map(l=>l.join(',')).join('\n'), 'rapport_' + rapportMois + '.csv');
+  toast('Rapport de ' + monthTitle(rapportMois).toLowerCase() + ' exporté');
 }
 
 /* ========================================================
@@ -6030,6 +6359,8 @@ async function init(){
 
   // Employés
   $('#btnAddEmployee').addEventListener('click', ()=>openEmployeeForm());
+  $('#rapportMois').addEventListener('change', (e)=>{ rapportMois = e.target.value || todayISO().slice(0,7); renderRapports(); });
+  $('#employesTabs').addEventListener('click', (e)=>{ const b=e.target.closest('button[data-tab]'); if(!b) return; employesTab=b.dataset.tab; applyEmployesTab(); });
   $('#btnSalaryCalc').addEventListener('click', openSalaryCalcModal);
   $('#btnGestionRemun').addEventListener('click', openGestionRemunModal);
   $('#employesSearch').addEventListener('input', debounce((e)=>{ employesFilter.q=e.target.value; renderEmployes(); }));
